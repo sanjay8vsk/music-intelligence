@@ -18,3 +18,7 @@ data/
 
 # model artifacts
 models/
+
+# audio files
+data/raw_audio/
+data/features/
