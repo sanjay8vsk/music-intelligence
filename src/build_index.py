@@ -15,7 +15,10 @@ def build_faiss_index():
 
             path = os.path.join(FEATURE_FOLDER, file)
             mfcc = np.load(path)
-            embedding = np.mean(mfcc, axis=1)
+            
+            mean = np.mean(mfcc, axis=1)
+            std = np.std(mfcc, axis=1)
+            embedding = np.concatenate([mean, std])
 
             embeddings.append(embedding)
             song_names.append(file)

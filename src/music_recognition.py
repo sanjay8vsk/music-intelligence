@@ -1,6 +1,7 @@
 import librosa
 import numpy as np
 from build_index import build_faiss_index
+from record_audio import record_audio
 
 def recognize_song(audio_file):
 
@@ -8,7 +9,9 @@ def recognize_song(audio_file):
 
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
 
-    query_embedding = np.mean(mfcc, axis=1).astype("float32").reshape(1, -1)
+    mean = np.mean(mfcc, axis=1)
+    std = np.std(mfcc, axis=1)
+    query_embedding = np.concatenate([mean, std]).astype("float32").reshape(1, -1)
 
     index, song_names = build_faiss_index()
 
@@ -22,10 +25,10 @@ def recognize_song(audio_file):
 
 if __name__ == "__main__":
 
-    query = "data/raw_audio/sample-9s.wav"
+    audio_file = record_audio()
 
-    result = recognize_song(query)
+    result = recognize_song(audio_file)
 
-    print("Top matches:")
+    print("\nTop matches:")
     for song in result:
         print(song)
