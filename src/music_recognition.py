@@ -12,11 +12,13 @@ def recognize_song(audio_file):
 
     index, song_names = build_faiss_index()
 
-    distances, indices = index.search(query_embedding, k=1) # type: ignore
+    distances, indices = index.search(query_embedding, k=3) # type: ignore
 
-    best_match = song_names[indices[0][0]]
+    results = []
 
-    return best_match
+    for i in indices[0]:
+        results.append(song_names[i])
+    return results
 
 if __name__ == "__main__":
 
@@ -24,4 +26,6 @@ if __name__ == "__main__":
 
     result = recognize_song(query)
 
-    print("Matched song:", result)
+    print("Top matches:")
+    for song in result:
+        print(song)
