@@ -3,6 +3,9 @@ from pitch_extraction import extract_pitch, normalize_pitch
 from melody_match import compare_melodies
 from build_melody_db import build_melody_database
 from pitch_extraction import resize_melody
+from recommendation import get_similar_songs
+from typing import List, Tuple
+from genre_predictor import predict_genre
 import numpy as np
 
 def recognize_humming():
@@ -44,8 +47,22 @@ if __name__ == "__main__":
     print("\n🎵 Top matches:")
 
     if not result:
-        print(" No confident matches found. Try humming more clearly or for a longer duration.")
+        print(" No confident matches found...")
     else:
         for i, (song, score) in enumerate(result, 1):
             confidence = np.exp(-score)
             print(f"{i}. {song} -> score: {score:.2f} | confidence: {confidence*100:.2f}%")
+        best_song, _ = result[0]
+
+        print("\n🔎 Similar songs based on your humming:")
+
+        db = build_melody_database()
+        query_vector = db[best_song]
+
+        recommendations : List[SongScore] = get_similar_songs(query_vector, db) # type: ignore
+
+        print("DEBUG recommendations:", recommendations)
+        print("TYPE:", type(recommendations))
+
+        for song, score in recommendations: 
+            print(f" {song}")
