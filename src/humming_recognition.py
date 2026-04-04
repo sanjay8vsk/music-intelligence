@@ -36,7 +36,7 @@ def recognize_humming():
         results.sort(key=lambda x: x[1])
 
         best_score = results[0][1]
-        if best_score > 5:
+        if best_score > 10:
             return []
 
         return results[:3]

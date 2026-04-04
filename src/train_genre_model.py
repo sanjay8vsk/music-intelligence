@@ -6,6 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 import joblib
 from ml_features import extract_features
+from sklearn.ensemble import GradientBoostingClassifier
 
 DATASET_PATH = "data/ml_dataset"
 
@@ -17,6 +18,7 @@ for genre in os.listdir(DATASET_PATH):
 
     for file in os.listdir(genre_path):
         file_path = os.path.join(genre_path, file)
+        print("Processing:", file_path)
         
         try:
             features = extract_features(file_path)
@@ -28,18 +30,22 @@ for genre in os.listdir(DATASET_PATH):
             print("Error processing file:", file_path)
 print("Total samples:", len(X))
 print("Feature shape:", np.array(X).shape)
+print("Finished feature extraction")
 X = np.array(X)
-
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
 
 le = LabelEncoder()
 y_encoded = le.fit_transform(y)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, stratify=y_encoded)
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, stratify=y_encoded, random_state=42)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-model = RandomForestClassifier(n_estimators=300, max_depth=20)
+model = GradientBoostingClassifier(n_estimators=200, max_depth=5, learning_rate=0.05, random_state=42)
 model.fit(X_train, y_train)
+
+print("Training accuracy:", model.score(X_train, y_train))
+print("Test accuracy:", model.score(X_test, y_test))
 
 joblib.dump(model, "models/genre_model.pkl")
 joblib.dump(le, "models/label_encoder.pkl")
