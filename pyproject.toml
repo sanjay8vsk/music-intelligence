@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "musicintel"
+version = "0.1.0"
+description = "Music Intelligence — audio recognition and analysis toolkit"
+requires-python = ">=3.11"
+dependencies = [
+    "librosa>=0.11",
+    "numpy",
+    "scipy",
+    "sounddevice",
+]
+
+[tool.setuptools.packages.find]
+include = ["musicintel*"]

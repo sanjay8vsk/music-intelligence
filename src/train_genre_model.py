@@ -5,7 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 import joblib
-from ml_features import extract_features
+from musicintel.analysis.features import extract_features
 from sklearn.ensemble import GradientBoostingClassifier
 
 DATASET_PATH = "data/ml_dataset"

@@ -1,6 +1,6 @@
-from record_audio import record_audio
+from musicintel.devtools.capture import record_audio
 from pitch_extraction import extract_pitch, normalize_pitch
-from melody_match import compare_melodies
+from musicintel.humming.dtw import compare_melodies
 from build_melody_db import build_melody_database
 from pitch_extraction import resize_melody
 from recommendation import get_similar_songs

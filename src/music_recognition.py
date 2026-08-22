@@ -1,7 +1,7 @@
 import librosa
 import numpy as np
 from build_index import build_faiss_index
-from record_audio import record_audio
+from musicintel.devtools.capture import record_audio
 
 def recognize_song(audio_file):
 
