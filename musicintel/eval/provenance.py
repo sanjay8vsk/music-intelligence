@@ -39,6 +39,22 @@ HARNESS_SOURCES = (
 )
 
 
+# The Phase 1 landmark recognition pipeline. Separate from HARNESS_SOURCES on
+# purpose: the harness is the thing that MEASURES, this is the thing being
+# measured, and a report needs to pin both. The Phase 1D audit found a report
+# whose only source fingerprint covered the harness, leaving the recognizer that
+# actually produced the numbers unidentified -- this tuple closes that.
+#
+# A benchmark driver should fingerprint PHASE1_SOURCES plus its own path, so the
+# record covers the evaluation code as well as the engine.
+PHASE1_SOURCES = (
+    "musicintel/recognition/fingerprint.py",
+    "musicintel/recognition/index.py",
+    "musicintel/recognition/matcher.py",
+    "musicintel/recognition/decision.py",
+)
+
+
 def _git(args: list[str], repo_root: str | Path) -> str:
     """Run a git command, returning stripped stdout ('' on any failure)."""
     try:
