@@ -43,6 +43,14 @@ from pathlib import Path
 
 import numpy as np
 
+# Version of the FINGERPRINT FORMAT -- the hash layout plus the pipeline that
+# fills it. Bump it whenever a change would make previously stored fingerprints
+# uncomparable with freshly extracted ones (different bit layout, different
+# peak-selection rule, different default band). It is NOT a version of this
+# file: refactoring that leaves the produced keys identical must not bump it.
+# A persisted index records this value and refuses to load against a mismatch.
+FORMAT_VERSION = 1
+
 # -- hash packing layout ------------------------------------------------------
 # A landmark is packed into one unsigned 32-bit integer:
 #
@@ -523,6 +531,7 @@ def fingerprint_file(
 __all__ = [
     "DEFAULT_CONFIG",
     "DELTA_BITS",
+    "FORMAT_VERSION",
     "FREQ_BITS",
     "FingerprintConfig",
     "FingerprintResult",
