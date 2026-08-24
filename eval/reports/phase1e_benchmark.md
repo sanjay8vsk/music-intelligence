@@ -1,9 +1,9 @@
 # Phase 1E — Landmark Recognizer Benchmark
 
-**Recognizer:** `landmark@5a6ab3f+dirty` (fingerprint format v1, index format v1)  
-**Generated:** 2026-08-24T09:45:29+00:00  
-**Repo commit:** `5a6ab3f590bc`  
-**Working tree:** **DIRTY** — 2 uncommitted paths; the commit above does not contain the exact code that ran  
+**Recognizer:** `landmark@b8e16b2` (fingerprint format v1, index format v1)  
+**Generated:** 2026-08-24T10:18:52+00:00  
+**Repo commit:** `b8e16b29576a`  
+**Working tree:** clean  
 **Phase 1 pipeline fingerprint:** `c31b8e453653558a773014c49faf14cc8c55d0dd5247bed459b4995d163e3511`
 
 > The Phase 0 baseline (`eval/reports/baseline.md`, Recall@1 29.46%, FAR 100%)
@@ -13,8 +13,8 @@
 
 | Field | Value |
 |---|---|
-| Git commit | `5a6ab3f590bc808f20148ecc154091ebd4b9446f` |
-| Git dirty | `True` (2 paths) |
+| Git commit | `b8e16b29576a24148e800097e7a260744d691e46` |
+| Git dirty | `False` (0 paths) |
 | **Phase 1 source fingerprint** | `c31b8e453653558a773014c49faf14cc8c55d0dd5247bed459b4995d163e3511` |
 | Harness fingerprint | `803a68f3d1df509f4a4c7b724e9537d4e92057375642a329405befa4ca62a721` |
 | Phase 0 algorithm fingerprint | `d53b191a2a98f3ed57ee42dc932c5506732ab8ba20a4ca1f1ea2b6c0db3f98fc` |
@@ -42,7 +42,7 @@ fingerprint : 11025 Hz, n_fft 1024, hop 128, band 200-3000 Hz,
 matcher     : offset tolerance 2 frames
 decision    : aligned_landmarks / query_landmarks
               MATCH iff score >= 0.018088 and aligned >= 5
-index       : 32 tracks, 854,018 postings, 10.2 MB, built in 26.26s
+index       : 32 tracks, 854,018 postings, 10.2 MB, built in 25.07s
 ```
 
 The decision score is a **rate, not a probability**.
@@ -62,8 +62,8 @@ The decision score is a **rate, not a probability**.
 | FAR | 100.00% | **3.17%** | 1.59% |
 | Correct rejection | 0.00% | **96.83%** | 98.41% |
 | Precision | — | **99.28%** | 99.57% |
-| p50 latency | 19.48 ms | **30.43 ms** | |
-| p95 latency | 58.23 ms | **97.29 ms** | |
+| p50 latency | 19.48 ms | **29.39 ms** | |
+| p95 latency | 58.23 ms | **89.28 ms** | |
 
 Ranking-only Recall@1 (matcher top-1, before the decision layer): **85.01%** over all queries. The gap to the accepted figure is the cost of rejection.
 
@@ -166,12 +166,12 @@ Every false accept, itemized:
 
 | Stage | p50 ms | p95 ms | p99 ms | mean ms |
 |---|---:|---:|---:|---:|
-| fingerprint | 12.29 | 25.84 | 47.91 | 15.12 |
-| lookup | 0.82 | 1.98 | 2.73 | 1.00 |
-| histogram | 16.53 | 67.01 | 136.71 | 24.24 |
-| rank | 0.01 | 0.02 | 0.03 | 0.01 |
+| fingerprint | 12.05 | 24.31 | 27.06 | 14.27 |
+| lookup | 0.73 | 1.59 | 2.02 | 0.83 |
+| histogram | 16.14 | 64.56 | 124.65 | 23.59 |
+| rank | 0.01 | 0.02 | 0.02 | 0.01 |
 | decision | 0.00 | 0.00 | 0.00 | 0.00 |
-| total | 30.43 | 97.29 | 165.02 | 40.38 |
+| total | 29.39 | 89.28 | 155.53 | 38.70 |
 
 Phase 0 measured p50 19.48 ms / p95 58.23 ms, but its latency excluded feature extraction on the reference side and was taken on a differently loaded machine; treat the comparison as indicative only.
 
