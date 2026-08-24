@@ -11,8 +11,17 @@ dependencies = [
     "librosa>=0.11",
     "numpy",
     "scipy",
+    "soundfile>=0.13",   # libsndfile >=1.2 gives MP3/Opus encode for degradations
     "sounddevice",
+    "requests",          # fixture-corpus fetching
+    "faiss-cpu",         # baseline MFCC/FAISS recognizer under evaluation
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 include = ["musicintel*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
