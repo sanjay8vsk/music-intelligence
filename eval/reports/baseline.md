@@ -1,9 +1,9 @@
 # Recognition Baseline
 
-**Recognizer:** `mfcc_faiss_baseline` (version `prototype@1b07eba+dirty`)  
-**Generated:** 2026-08-24T08:02:56+00:00  
-**Repo commit:** `1b07eba7e135`  
-**Working tree: DIRTY** (13 uncommitted paths) -- the commit above does NOT contain the exact code that ran. The harness fingerprint below is what identifies it.
+**Recognizer:** `mfcc_faiss_baseline` (version `prototype@3c3981c`)  
+**Generated:** 2026-08-24T08:10:24+00:00  
+**Repo commit:** `3c3981c3ccfb`  
+**Working tree:** clean
 
 ## Environment
 
@@ -36,15 +36,15 @@ Audio is **not** committed. Reproduce with `python scripts/fetch_fixture_corpus.
 - Clean conditions are crossed with all durations x all positions. Noise, codec and filtering are crossed with all durations at the middle position. Speed and pitch are evaluated at 5 s, middle.
 - All randomness is seeded from a SHA-256 of the query id, so the query set is byte-reproducible.
 - Latency times **only** the `recognize()` call, using `time.perf_counter()`. Index construction is excluded and reported separately.
-- Index build (catalog of 32): **1.8 s** total, of which **0.170 s** was FAISS index construction.
+- Index build (catalog of 32): **6.4 s** total, of which **0.693 s** was FAISS index construction.
 
 ## Clean Results
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `clean_duration_3s` | 96 | 25.0% | 45.8% | 0.0% | — | 10.5 | 17.1 |
-| `clean_duration_5s` | 96 | 30.2% | 49.0% | 0.0% | — | 11.8 | 37.0 |
-| `clean_duration_10s` | 96 | 38.5% | 56.2% | 0.0% | — | 15.4 | 25.8 |
+| `clean_duration_3s` | 96 | 25.0% | 45.8% | 0.0% | — | 12.5 | 58.2 |
+| `clean_duration_5s` | 96 | 30.2% | 49.0% | 0.0% | — | 16.4 | 55.9 |
+| `clean_duration_10s` | 96 | 38.5% | 56.2% | 0.0% | — | 25.6 | 63.7 |
 
 ### Positive queries by excerpt position and duration
 
@@ -63,71 +63,71 @@ Audio is **not** committed. Reproduce with `python scripts/fetch_fixture_corpus.
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `noise_pink_snr0db_duration_3s` | 32 | 6.2% | 15.6% | 0.0% | — | 11.6 | 14.5 |
-| `noise_pink_snr0db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 12.4 | 14.9 |
-| `noise_pink_snr0db_duration_10s` | 32 | 6.2% | 15.6% | 0.0% | — | 15.5 | 20.6 |
-| `noise_pink_snr10db_duration_3s` | 32 | 9.4% | 18.8% | 0.0% | — | 10.8 | 14.1 |
-| `noise_pink_snr10db_duration_5s` | 32 | 9.4% | 18.8% | 0.0% | — | 12.0 | 13.9 |
-| `noise_pink_snr10db_duration_10s` | 32 | 9.4% | 18.8% | 0.0% | — | 15.3 | 20.3 |
-| `noise_pink_snr20db_duration_3s` | 32 | 21.9% | 37.5% | 0.0% | — | 11.5 | 31.9 |
-| `noise_pink_snr20db_duration_5s` | 32 | 21.9% | 43.8% | 0.0% | — | 12.8 | 20.2 |
-| `noise_pink_snr20db_duration_10s` | 32 | 21.9% | 43.8% | 0.0% | — | 15.8 | 20.4 |
-| `noise_pink_snr5db_duration_3s` | 32 | 6.2% | 18.8% | 0.0% | — | 11.0 | 20.9 |
-| `noise_pink_snr5db_duration_5s` | 32 | 6.2% | 18.8% | 0.0% | — | 12.0 | 14.0 |
-| `noise_pink_snr5db_duration_10s` | 32 | 9.4% | 18.8% | 0.0% | — | 15.9 | 19.0 |
-| `noise_white_snr0db_duration_5s` | 32 | 3.1% | 12.5% | 0.0% | — | 11.2 | 16.0 |
-| `noise_white_snr10db_duration_5s` | 32 | 9.4% | 15.6% | 0.0% | — | 11.8 | 15.6 |
-| `noise_white_snr20db_duration_5s` | 32 | 12.5% | 34.4% | 0.0% | — | 12.6 | 15.9 |
-| `noise_white_snr5db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 11.3 | 15.0 |
+| `noise_pink_snr0db_duration_3s` | 32 | 6.2% | 15.6% | 0.0% | — | 17.5 | 29.3 |
+| `noise_pink_snr0db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 18.7 | 43.4 |
+| `noise_pink_snr0db_duration_10s` | 32 | 6.2% | 15.6% | 0.0% | — | 24.6 | 52.1 |
+| `noise_pink_snr10db_duration_3s` | 32 | 9.4% | 18.8% | 0.0% | — | 16.9 | 57.6 |
+| `noise_pink_snr10db_duration_5s` | 32 | 9.4% | 18.8% | 0.0% | — | 18.4 | 49.6 |
+| `noise_pink_snr10db_duration_10s` | 32 | 9.4% | 18.8% | 0.0% | — | 23.9 | 68.9 |
+| `noise_pink_snr20db_duration_3s` | 32 | 21.9% | 37.5% | 0.0% | — | 15.1 | 33.0 |
+| `noise_pink_snr20db_duration_5s` | 32 | 21.9% | 43.8% | 0.0% | — | 19.1 | 73.7 |
+| `noise_pink_snr20db_duration_10s` | 32 | 21.9% | 43.8% | 0.0% | — | 26.9 | 72.9 |
+| `noise_pink_snr5db_duration_3s` | 32 | 6.2% | 18.8% | 0.0% | — | 16.4 | 45.9 |
+| `noise_pink_snr5db_duration_5s` | 32 | 6.2% | 18.8% | 0.0% | — | 19.6 | 31.8 |
+| `noise_pink_snr5db_duration_10s` | 32 | 9.4% | 18.8% | 0.0% | — | 24.8 | 81.0 |
+| `noise_white_snr0db_duration_5s` | 32 | 3.1% | 12.5% | 0.0% | — | 15.9 | 37.4 |
+| `noise_white_snr10db_duration_5s` | 32 | 9.4% | 15.6% | 0.0% | — | 16.3 | 54.0 |
+| `noise_white_snr20db_duration_5s` | 32 | 12.5% | 34.4% | 0.0% | — | 16.8 | 57.2 |
+| `noise_white_snr5db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 15.3 | 49.7 |
 
 ### Codec
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `codec_mp3_128k_duration_3s` | 32 | 40.6% | 59.4% | 0.0% | — | 11.1 | 13.7 |
-| `codec_mp3_128k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 11.7 | 15.2 |
-| `codec_mp3_128k_duration_10s` | 32 | 43.8% | 56.2% | 0.0% | — | 15.3 | 18.8 |
-| `codec_mp3_32k_duration_3s` | 32 | 37.5% | 59.4% | 0.0% | — | 10.1 | 13.0 |
-| `codec_mp3_32k_duration_5s` | 32 | 37.5% | 59.4% | 0.0% | — | 11.8 | 17.5 |
-| `codec_mp3_32k_duration_10s` | 32 | 34.4% | 53.1% | 0.0% | — | 15.4 | 20.0 |
-| `codec_mp3_64k_duration_3s` | 32 | 40.6% | 59.4% | 0.0% | — | 10.7 | 14.5 |
-| `codec_mp3_64k_duration_5s` | 32 | 43.8% | 59.4% | 0.0% | — | 11.6 | 14.8 |
-| `codec_mp3_64k_duration_10s` | 32 | 43.8% | 53.1% | 0.0% | — | 15.2 | 19.2 |
-| `codec_opus_32k_duration_3s` | 32 | 43.8% | 62.5% | 0.0% | — | 12.4 | 18.3 |
-| `codec_opus_32k_duration_5s` | 32 | 43.8% | 59.4% | 0.0% | — | 13.7 | 19.6 |
-| `codec_opus_32k_duration_10s` | 32 | 43.8% | 59.4% | 0.0% | — | 18.3 | 26.1 |
-| `codec_opus_64k_duration_3s` | 32 | 40.6% | 59.4% | 0.0% | — | 11.8 | 17.2 |
-| `codec_opus_64k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 14.0 | 18.2 |
-| `codec_opus_64k_duration_10s` | 32 | 43.8% | 59.4% | 0.0% | — | 19.0 | 23.9 |
+| `codec_mp3_128k_duration_3s` | 32 | 40.6% | 59.4% | 0.0% | — | 15.9 | 29.8 |
+| `codec_mp3_128k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 16.0 | 33.7 |
+| `codec_mp3_128k_duration_10s` | 32 | 43.8% | 56.2% | 0.0% | — | 22.7 | 50.9 |
+| `codec_mp3_32k_duration_3s` | 32 | 37.5% | 59.4% | 0.0% | — | 14.9 | 45.8 |
+| `codec_mp3_32k_duration_5s` | 32 | 37.5% | 59.4% | 0.0% | — | 17.2 | 46.3 |
+| `codec_mp3_32k_duration_10s` | 32 | 34.4% | 53.1% | 0.0% | — | 23.2 | 43.7 |
+| `codec_mp3_64k_duration_3s` | 32 | 40.6% | 59.4% | 0.0% | — | 15.6 | 38.3 |
+| `codec_mp3_64k_duration_5s` | 32 | 43.8% | 59.4% | 0.0% | — | 16.2 | 56.5 |
+| `codec_mp3_64k_duration_10s` | 32 | 43.8% | 53.1% | 0.0% | — | 26.2 | 45.3 |
+| `codec_opus_32k_duration_3s` | 32 | 43.8% | 62.5% | 0.0% | — | 18.1 | 38.0 |
+| `codec_opus_32k_duration_5s` | 32 | 43.8% | 59.4% | 0.0% | — | 19.5 | 56.4 |
+| `codec_opus_32k_duration_10s` | 32 | 43.8% | 59.4% | 0.0% | — | 28.4 | 81.1 |
+| `codec_opus_64k_duration_3s` | 32 | 40.6% | 59.4% | 0.0% | — | 18.7 | 37.8 |
+| `codec_opus_64k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 21.2 | 50.2 |
+| `codec_opus_64k_duration_10s` | 32 | 43.8% | 59.4% | 0.0% | — | 30.9 | 108.8 |
 
 ### Filter
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `filter_lowpass8k_duration_3s` | 32 | 34.4% | 56.2% | 0.0% | — | 10.7 | 14.3 |
-| `filter_lowpass8k_duration_5s` | 32 | 37.5% | 56.2% | 0.0% | — | 12.1 | 14.4 |
-| `filter_lowpass8k_duration_10s` | 32 | 37.5% | 53.1% | 0.0% | — | 16.0 | 29.5 |
-| `filter_telephone_duration_3s` | 32 | 18.8% | 28.1% | 0.0% | — | 12.2 | 15.9 |
-| `filter_telephone_duration_5s` | 32 | 18.8% | 28.1% | 0.0% | — | 13.1 | 19.0 |
-| `filter_telephone_duration_10s` | 32 | 18.8% | 28.1% | 0.0% | — | 15.3 | 19.1 |
+| `filter_lowpass8k_duration_3s` | 32 | 34.4% | 56.2% | 0.0% | — | 12.5 | 29.3 |
+| `filter_lowpass8k_duration_5s` | 32 | 37.5% | 56.2% | 0.0% | — | 16.8 | 38.8 |
+| `filter_lowpass8k_duration_10s` | 32 | 37.5% | 53.1% | 0.0% | — | 24.2 | 84.5 |
+| `filter_telephone_duration_3s` | 32 | 18.8% | 28.1% | 0.0% | — | 17.3 | 66.1 |
+| `filter_telephone_duration_5s` | 32 | 18.8% | 28.1% | 0.0% | — | 17.3 | 45.9 |
+| `filter_telephone_duration_10s` | 32 | 18.8% | 28.1% | 0.0% | — | 23.3 | 77.0 |
 
 ### Speed
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `speed_+2pct_duration_5s` | 32 | 40.6% | 59.4% | 0.0% | — | 11.9 | 17.7 |
-| `speed_+5pct_duration_5s` | 32 | 40.6% | 59.4% | 0.0% | — | 11.5 | 15.2 |
-| `speed_-2pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 12.4 | 16.0 |
-| `speed_-5pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 13.1 | 16.4 |
+| `speed_+2pct_duration_5s` | 32 | 40.6% | 59.4% | 0.0% | — | 15.9 | 44.5 |
+| `speed_+5pct_duration_5s` | 32 | 40.6% | 59.4% | 0.0% | — | 16.5 | 48.7 |
+| `speed_-2pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 15.0 | 53.4 |
+| `speed_-5pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 17.3 | 42.3 |
 
 ### Pitch
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `pitch_+1st_duration_5s` | 32 | 46.9% | 56.2% | 0.0% | — | 11.8 | 16.0 |
-| `pitch_+2st_duration_5s` | 32 | 43.8% | 56.2% | 0.0% | — | 12.0 | 23.9 |
-| `pitch_-1st_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 11.9 | 18.0 |
-| `pitch_-2st_duration_5s` | 32 | 34.4% | 59.4% | 0.0% | — | 11.6 | 13.6 |
+| `pitch_+1st_duration_5s` | 32 | 46.9% | 56.2% | 0.0% | — | 15.6 | 63.6 |
+| `pitch_+2st_duration_5s` | 32 | 43.8% | 56.2% | 0.0% | — | 16.5 | 55.3 |
+| `pitch_-1st_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 16.1 | 53.9 |
+| `pitch_-2st_duration_5s` | 32 | 34.4% | 59.4% | 0.0% | — | 15.5 | 53.2 |
 
 ## Negative Results
 
@@ -136,22 +136,22 @@ Audio is **not** committed. Reproduce with `python scripts/fetch_fixture_corpus.
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `negative_near_silence_duration_3s` | 1 | — | — | — | 100.0% | 10.3 | 10.3 |
-| `negative_near_silence_duration_5s` | 1 | — | — | — | 100.0% | 13.4 | 13.4 |
-| `negative_near_silence_duration_10s` | 1 | — | — | — | 100.0% | 15.3 | 15.3 |
-| `negative_noise_pink_duration_3s` | 1 | — | — | — | 100.0% | 9.8 | 9.8 |
-| `negative_noise_pink_duration_5s` | 1 | — | — | — | 100.0% | 11.2 | 11.2 |
-| `negative_noise_pink_duration_10s` | 1 | — | — | — | 100.0% | 12.8 | 12.8 |
-| `negative_noise_white_duration_3s` | 1 | — | — | — | 100.0% | 11.3 | 11.3 |
-| `negative_noise_white_duration_5s` | 1 | — | — | — | 100.0% | 12.3 | 12.3 |
-| `negative_noise_white_duration_10s` | 1 | — | — | — | 100.0% | 15.7 | 15.7 |
-| `negative_out_of_catalog_music_duration_3s` | 36 | — | — | — | 100.0% | 11.0 | 20.3 |
-| `negative_out_of_catalog_music_duration_5s` | 36 | — | — | — | 100.0% | 12.4 | 15.6 |
-| `negative_out_of_catalog_music_duration_10s` | 36 | — | — | — | 100.0% | 15.9 | 27.1 |
-| `negative_silence_duration_3s` | 1 | — | — | — | 100.0% | 10.0 | 10.0 |
-| `negative_silence_duration_5s` | 1 | — | — | — | 100.0% | 13.0 | 13.0 |
-| `negative_silence_duration_10s` | 1 | — | — | — | 100.0% | 16.7 | 16.7 |
-| `negative_speech_duration_3s` | 6 | — | — | — | 100.0% | 10.0 | 11.4 |
+| `negative_near_silence_duration_3s` | 1 | — | — | — | 100.0% | 13.4 | 13.4 |
+| `negative_near_silence_duration_5s` | 1 | — | — | — | 100.0% | 24.5 | 24.5 |
+| `negative_near_silence_duration_10s` | 1 | — | — | — | 100.0% | 21.5 | 21.5 |
+| `negative_noise_pink_duration_3s` | 1 | — | — | — | 100.0% | 14.7 | 14.7 |
+| `negative_noise_pink_duration_5s` | 1 | — | — | — | 100.0% | 16.6 | 16.6 |
+| `negative_noise_pink_duration_10s` | 1 | — | — | — | 100.0% | 25.2 | 25.2 |
+| `negative_noise_white_duration_3s` | 1 | — | — | — | 100.0% | 14.9 | 14.9 |
+| `negative_noise_white_duration_5s` | 1 | — | — | — | 100.0% | 17.3 | 17.3 |
+| `negative_noise_white_duration_10s` | 1 | — | — | — | 100.0% | 27.0 | 27.0 |
+| `negative_out_of_catalog_music_duration_3s` | 36 | — | — | — | 100.0% | 18.5 | 41.7 |
+| `negative_out_of_catalog_music_duration_5s` | 36 | — | — | — | 100.0% | 23.6 | 66.1 |
+| `negative_out_of_catalog_music_duration_10s` | 36 | — | — | — | 100.0% | 32.5 | 68.8 |
+| `negative_silence_duration_3s` | 1 | — | — | — | 100.0% | 13.4 | 13.4 |
+| `negative_silence_duration_5s` | 1 | — | — | — | 100.0% | 19.5 | 19.5 |
+| `negative_silence_duration_10s` | 1 | — | — | — | 100.0% | 24.9 | 24.9 |
+| `negative_speech_duration_3s` | 6 | — | — | — | 100.0% | 16.5 | 20.3 |
 
 ### Would a score threshold have helped?
 
@@ -169,33 +169,33 @@ L2 distance distributions (overlap = inseparability):
 | Set | n | min | p05 | median | p95 | max |
 |---|---:|---:|---:|---:|---:|---:|
 | Correct matches | 509 | 29.351 | 469.2157 | 2616.7007 | 13745.7111 | 36904.8398 |
-| Negatives (no true match) | 126 | 1824.0072 | 2523.5459 | 7260.9912 | 95827.3223 | 427287.625 |
+| Negatives (no true match) | 126 | 1824.0072 | 2523.5459 | 7252.6294 | 95827.3223 | 427287.625 |
 
 ## Worst Conditions (measured)
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `noise_white_snr0db_duration_5s` | 32 | 3.1% | 12.5% | 0.0% | — | 11.2 | 16.0 |
-| `noise_pink_snr0db_duration_3s` | 32 | 6.2% | 15.6% | 0.0% | — | 11.6 | 14.5 |
-| `noise_pink_snr0db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 12.4 | 14.9 |
-| `noise_pink_snr0db_duration_10s` | 32 | 6.2% | 15.6% | 0.0% | — | 15.5 | 20.6 |
-| `noise_white_snr5db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 11.3 | 15.0 |
-| `noise_pink_snr5db_duration_3s` | 32 | 6.2% | 18.8% | 0.0% | — | 11.0 | 20.9 |
-| `noise_pink_snr5db_duration_5s` | 32 | 6.2% | 18.8% | 0.0% | — | 12.0 | 14.0 |
-| `noise_white_snr10db_duration_5s` | 32 | 9.4% | 15.6% | 0.0% | — | 11.8 | 15.6 |
+| `noise_white_snr0db_duration_5s` | 32 | 3.1% | 12.5% | 0.0% | — | 15.9 | 37.4 |
+| `noise_pink_snr0db_duration_3s` | 32 | 6.2% | 15.6% | 0.0% | — | 17.5 | 29.3 |
+| `noise_pink_snr0db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 18.7 | 43.4 |
+| `noise_pink_snr0db_duration_10s` | 32 | 6.2% | 15.6% | 0.0% | — | 24.6 | 52.1 |
+| `noise_white_snr5db_duration_5s` | 32 | 6.2% | 15.6% | 0.0% | — | 15.3 | 49.7 |
+| `noise_pink_snr5db_duration_3s` | 32 | 6.2% | 18.8% | 0.0% | — | 16.4 | 45.9 |
+| `noise_pink_snr5db_duration_5s` | 32 | 6.2% | 18.8% | 0.0% | — | 19.6 | 31.8 |
+| `noise_white_snr10db_duration_5s` | 32 | 9.4% | 15.6% | 0.0% | — | 16.3 | 54.0 |
 
 ## Best Conditions (measured)
 
 | Condition | Queries | Recall@1 | Recall@3 | No-match | FAR | p50 ms | p95 ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `speed_-5pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 13.1 | 16.4 |
-| `speed_-2pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 12.4 | 16.0 |
-| `pitch_-1st_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 11.9 | 18.0 |
-| `codec_opus_64k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 14.0 | 18.2 |
-| `codec_mp3_128k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 11.7 | 15.2 |
-| `pitch_+1st_duration_5s` | 32 | 46.9% | 56.2% | 0.0% | — | 11.8 | 16.0 |
-| `codec_opus_32k_duration_3s` | 32 | 43.8% | 62.5% | 0.0% | — | 12.4 | 18.3 |
-| `codec_opus_64k_duration_10s` | 32 | 43.8% | 59.4% | 0.0% | — | 19.0 | 23.9 |
+| `speed_-5pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 17.3 | 42.3 |
+| `speed_-2pct_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 15.0 | 53.4 |
+| `pitch_-1st_duration_5s` | 32 | 46.9% | 62.5% | 0.0% | — | 16.1 | 53.9 |
+| `codec_opus_64k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 21.2 | 50.2 |
+| `codec_mp3_128k_duration_5s` | 32 | 46.9% | 59.4% | 0.0% | — | 16.0 | 33.7 |
+| `pitch_+1st_duration_5s` | 32 | 46.9% | 56.2% | 0.0% | — | 15.6 | 63.6 |
+| `codec_opus_32k_duration_3s` | 32 | 43.8% | 62.5% | 0.0% | — | 18.1 | 38.0 |
+| `codec_opus_64k_duration_10s` | 32 | 43.8% | 59.4% | 0.0% | — | 30.9 | 108.8 |
 
 ## Current Recognizer Assessment
 
