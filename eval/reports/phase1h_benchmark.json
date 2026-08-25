@@ -1,0 +1,827 @@
+{
+  "schema_version": 1,
+  "phase": "1H",
+  "title": "Speed-tolerant recognition cascade",
+  "what_changed": "an orchestration layer only: stage-1 short-circuit plus a query-side playback-rate sweep on rejection",
+  "what_did_not_change": [
+    "fingerprint.py, index.py, matcher.py, decision.py \u2014 byte-identical",
+    "the 1,728 positive queries and the 1,361-negative corpus",
+    "the stage-1 threshold (frozen Phase 1G operating point)"
+  ],
+  "provenance": {
+    "git_commit": "d0d5bc46becca0c120427369c82c99816a9023ea",
+    "git_dirty": false,
+    "git_dirty_path_count": 0,
+    "phase1_sources": [
+      "musicintel/recognition/fingerprint.py",
+      "musicintel/recognition/index.py",
+      "musicintel/recognition/matcher.py",
+      "musicintel/recognition/decision.py",
+      "musicintel/recognition/cascade.py",
+      "scripts/eval_phase1h.py"
+    ],
+    "phase1_source_sha256": "4104900b318d5febc9f10eaa6a153579e27604f2da4cc8ba458e363ecbe7b53c",
+    "harness_sha256": "803a68f3d1df509f4a4c7b724e9537d4e92057375642a329405befa4ca62a721",
+    "algorithm_sha256": "d53b191a2a98f3ed57ee42dc932c5506732ab8ba20a4ca1f1ea2b6c0db3f98fc",
+    "fingerprint_format_version": 1,
+    "index_format_version": 1,
+    "recognizer_version": "landmark-cascade@d0d5bc4",
+    "rate_grid_percent": [
+      -5.0,
+      -4.0,
+      -3.0,
+      -2.0,
+      -1.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+    ],
+    "rate_convention": "apply_rate(+p%) plays faster and higher; a recording captured at +p% is corrected by about -p%",
+    "stage1_threshold": 0.026316,
+    "stage2_threshold": 0.034782608695652174,
+    "min_aligned_landmarks": 5,
+    "benchmark_command": "python scripts/eval_phase1h.py",
+    "python": "3.11.1",
+    "executable": "/Users/vuddandisanjaybabu/Developer/music-intelligence/.venv/bin/python",
+    "platform": "macOS-26.6.1-arm64-arm-64bit",
+    "generated_utc": "2026-08-25T08:03:53+00:00"
+  },
+  "dataset": {
+    "manifest_hash": "4006aacb0abc1e7f2e12eee8a9f205a6f6b8cc563fef7a9396872cf797767a0e",
+    "split_hash": "b560583c9edab46151106ac84ef2bacc786b6d870870a905bb814152581a24d0",
+    "negative_set_hash": "fe1b10251c26251571422f3ec43bac413dee926e33fc649aac43513d361c2564",
+    "catalog_count": 32,
+    "heldout_count": 12,
+    "positive_queries": 1728,
+    "negative_queries": 1361,
+    "negative_sources": 31,
+    "evaluation_negatives": 626,
+    "evaluation_negative_source_recordings": 15
+  },
+  "threshold_selection": {
+    "stage1_threshold": 0.026316,
+    "stage1_threshold_origin": "frozen Phase 1G operating point, not re-fitted",
+    "stage2_threshold": 0.034782608695652174,
+    "stage2_selected_on": "calibration split only, judged on END-TO-END cascade FAR",
+    "far_target": 0.001,
+    "calibration_operating_point": {
+      "threshold": 0.034782608695652174,
+      "positives": 864,
+      "negatives": 735,
+      "true_positives": 765,
+      "wrong_accepts": 1,
+      "false_negatives": 98,
+      "true_negatives": 735,
+      "false_positives": 0,
+      "recall_at_1": 0.8854,
+      "far": 0.0,
+      "precision": 0.9987,
+      "correct_rejection_rate": 1.0
+    }
+  },
+  "results": {
+    "evaluation_stage1_only": {
+      "threshold": null,
+      "positives": 864,
+      "negatives": 626,
+      "true_positives": 678,
+      "wrong_accepts": 0,
+      "false_negatives": 186,
+      "true_negatives": 625,
+      "false_positives": 1,
+      "recall_at_1": 0.7847,
+      "far": 0.001597,
+      "precision": 0.9985,
+      "correct_rejection_rate": 0.9984
+    },
+    "evaluation_cascade": {
+      "threshold": 0.034782608695652174,
+      "positives": 864,
+      "negatives": 626,
+      "true_positives": 742,
+      "wrong_accepts": 2,
+      "false_negatives": 120,
+      "true_negatives": 624,
+      "false_positives": 2,
+      "recall_at_1": 0.8588,
+      "far": 0.003195,
+      "precision": 0.9946,
+      "correct_rejection_rate": 0.9968
+    },
+    "all_queries_stage1_only": {
+      "threshold": null,
+      "positives": 1728,
+      "negatives": 1361,
+      "true_positives": 1378,
+      "wrong_accepts": 1,
+      "false_negatives": 349,
+      "true_negatives": 1360,
+      "false_positives": 1,
+      "recall_at_1": 0.7975,
+      "far": 0.000735,
+      "precision": 0.9986,
+      "correct_rejection_rate": 0.9993
+    },
+    "all_queries_cascade": {
+      "threshold": 0.034782608695652174,
+      "positives": 1728,
+      "negatives": 1361,
+      "true_positives": 1507,
+      "wrong_accepts": 3,
+      "false_negatives": 218,
+      "true_negatives": 1359,
+      "false_positives": 2,
+      "recall_at_1": 0.8721,
+      "far": 0.00147,
+      "precision": 0.9967,
+      "correct_rejection_rate": 0.9985
+    },
+    "far_by_category_evaluation": {
+      "negative_near_silence": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 14,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 14,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_noise_pink": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 10,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 10,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_noise_white": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 13,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 13,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_out_of_catalog_music": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 569,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 567,
+        "false_positives": 2,
+        "recall_at_1": null,
+        "far": 0.003515,
+        "precision": 0.0,
+        "correct_rejection_rate": 0.9965
+      },
+      "negative_silence": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 8,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 8,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_speech": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 12,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 12,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      }
+    },
+    "far_by_cohort_evaluation": {
+      "phase1e": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 63,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 62,
+        "false_positives": 1,
+        "recall_at_1": null,
+        "far": 0.015873,
+        "precision": 0.0,
+        "correct_rejection_rate": 0.9841
+      },
+      "phase1g": {
+        "threshold": 0.034782608695652174,
+        "positives": 0,
+        "negatives": 563,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 562,
+        "false_positives": 1,
+        "recall_at_1": null,
+        "far": 0.001776,
+        "precision": 0.0,
+        "correct_rejection_rate": 0.9982
+      }
+    },
+    "false_accepts": [
+      {
+        "query_id": "ia_alg-045D-InPassing__neg_music__d3s__beginning",
+        "category": "negative_out_of_catalog_music",
+        "cohort": "phase1e",
+        "stage": 2,
+        "rate": 2.0,
+        "matched": "ia_30-hcir-berthaJamesSplit-RWT-012"
+      },
+      {
+        "query_id": "neg__ia_alg056__d3s__t163.0",
+        "category": "negative_out_of_catalog_music",
+        "cohort": "phase1g",
+        "stage": 1,
+        "rate": 0.0,
+        "matched": "ia_32EP02Descent_1"
+      }
+    ]
+  },
+  "cascade_behaviour": {
+    "stage1_match_rate": 0.4467,
+    "stage2_escalation_rate": 0.5533,
+    "stage2_acceptance_rate_of_escalated": 0.0772,
+    "stage2_acceptances": 132,
+    "winning_rate_histogram": {
+      "-5%": 32,
+      "-3%": 1,
+      "-2%": 31,
+      "+2%": 33,
+      "+3%": 1,
+      "+5%": 34
+    }
+  },
+  "by_family": {
+    "clean": {
+      "queries": 288,
+      "stage1_recall_at_1": 0.8889,
+      "cascade_recall_at_1": 0.8889,
+      "delta": 0.0
+    },
+    "codec": {
+      "queries": 480,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    "filter": {
+      "queries": 192,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    "noise": {
+      "queries": 512,
+      "stage1_recall_at_1": 0.875,
+      "cascade_recall_at_1": 0.875,
+      "delta": 0.0
+    },
+    "pitch": {
+      "queries": 128,
+      "stage1_recall_at_1": 0.0078,
+      "cascade_recall_at_1": 0.0234,
+      "delta": 0.0156
+    },
+    "speed": {
+      "queries": 128,
+      "stage1_recall_at_1": 0.0078,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.9922
+    }
+  },
+  "by_condition": [
+    {
+      "condition": "clean_duration_10s",
+      "family": "clean",
+      "queries": 96,
+      "stage1_recall_at_1": 0.9583,
+      "cascade_recall_at_1": 0.9583,
+      "delta": 0.0
+    },
+    {
+      "condition": "clean_duration_3s",
+      "family": "clean",
+      "queries": 96,
+      "stage1_recall_at_1": 0.8021,
+      "cascade_recall_at_1": 0.8021,
+      "delta": 0.0
+    },
+    {
+      "condition": "clean_duration_5s",
+      "family": "clean",
+      "queries": 96,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_128k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_128k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_128k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_32k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_32k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_32k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_64k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_64k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_64k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_32k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_32k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_32k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_64k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_64k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_64k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_lowpass8k_duration_10s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_lowpass8k_duration_3s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_lowpass8k_duration_5s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_telephone_duration_10s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_telephone_duration_3s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_telephone_duration_5s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr0db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.7188,
+      "cascade_recall_at_1": 0.7188,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr0db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.75,
+      "cascade_recall_at_1": 0.75,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr0db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.7188,
+      "cascade_recall_at_1": 0.7188,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr10db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr10db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr10db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr20db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr20db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr20db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr5db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr5db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.8438,
+      "cascade_recall_at_1": 0.8438,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr5db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.875,
+      "cascade_recall_at_1": 0.875,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr0db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.7812,
+      "cascade_recall_at_1": 0.7812,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr10db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr20db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9688,
+      "cascade_recall_at_1": 0.9688,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr5db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "pitch_+1st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.0,
+      "delta": 0
+    },
+    {
+      "condition": "pitch_+2st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.0,
+      "delta": 0
+    },
+    {
+      "condition": "pitch_-1st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.0625,
+      "delta": 0.0625
+    },
+    {
+      "condition": "pitch_-2st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0312,
+      "cascade_recall_at_1": 0.0312,
+      "delta": 0.0
+    },
+    {
+      "condition": "speed_+2pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0312,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.9688
+    },
+    {
+      "condition": "speed_+5pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 1.0
+    },
+    {
+      "condition": "speed_-2pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 1.0
+    },
+    {
+      "condition": "speed_-5pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 1.0
+    }
+  ],
+  "falsification_criteria": {
+    "1_speed_recall_ge_60pct": {
+      "value": 1.0,
+      "target": 0.6,
+      "pass": true
+    },
+    "2_preserved_families_within_-1pp": {
+      "deltas_vs_stage1": {
+        "clean": 0.0,
+        "noise": 0.0,
+        "codec": 0.0,
+        "filter": 0.0
+      },
+      "target": -0.01,
+      "pass": true
+    },
+    "3_holdout_far_le_5pct": {
+      "value": 0.003195,
+      "target": 0.05,
+      "pass": true
+    },
+    "4_p50_latency_le_40ms": {
+      "value": 144.456,
+      "target": 40.0,
+      "pass": false
+    },
+    "all_passed": false
+  },
+  "grid_study_calibration_only": {
+    "note": "EXPLORATORY. The evaluation used the full +/-5% @1% grid, fixed in advance. These alternatives are scored on the CALIBRATION split only and were not used to choose anything.",
+    "grids": {
+      "full \u00b15% @1%": {
+        "hypotheses_per_escalation": 10,
+        "calibration_recall_at_1": 0.8854
+      },
+      "\u00b15% @2% (-4,-2,2,4)": {
+        "hypotheses_per_escalation": 4,
+        "calibration_recall_at_1": 0.8715
+      },
+      "\u00b15% coarse (-5,-2,2,5)": {
+        "hypotheses_per_escalation": 4,
+        "calibration_recall_at_1": 0.8854
+      },
+      "\u00b12% only (-2,-1,1,2)": {
+        "hypotheses_per_escalation": 4,
+        "calibration_recall_at_1": 0.8461
+      }
+    }
+  },
+  "rate_profile_study": {
+    "escalated_calibration_queries_with_signal": 883,
+    "unimodal_profiles": 6,
+    "unimodal_fraction": 0.0068,
+    "note": "A single-peaked evidence-vs-rate profile is what a coarse-to-fine or continuous rate estimator would need. Measured here only; nothing of the sort is implemented."
+  },
+  "timing_ms": {
+    "stage1_ms": {
+      "p50": 26.026,
+      "p95": 78.407,
+      "mean": 33.893
+    },
+    "stage2_ms_when_escalated": {
+      "p50": 246.26,
+      "p95": 669.77,
+      "mean": 297.861
+    },
+    "total_cascade_ms": {
+      "p50": 144.456,
+      "p95": 622.29,
+      "p99": 844.689,
+      "mean": 198.685
+    },
+    "by_query_type_posthoc": {
+      "positives": {
+        "queries": 1728,
+        "escalation_rate": 0.202,
+        "p50": 39.387,
+        "p95": 344.99,
+        "mean": 93.571
+      },
+      "negatives": {
+        "queries": 1361,
+        "escalation_rate": 0.9993,
+        "p50": 270.932,
+        "p95": 734.653,
+        "mean": 332.144
+      }
+    }
+  },
+  "phase1g_reference": {
+    "note": "Phase 1G is the stage-1 control. Same corpus, same threshold.",
+    "phase1g_evaluation": {
+      "threshold": 0.02631578947368421,
+      "positives": 864,
+      "negatives": 626,
+      "true_positives": 678,
+      "wrong_accepts": 0,
+      "false_negatives": 186,
+      "true_negatives": 625,
+      "false_positives": 1,
+      "recall_at_1": 0.7847,
+      "far": 0.001597,
+      "precision": 0.9985,
+      "correct_rejection_rate": 0.9984
+    }
+  },
+  "limitations": [
+    "FAR rests on 626 evaluation negatives from 15 source recordings. Excerpt count is not sample size: clips from one recording fail together.",
+    "Pitch is unaddressed by design; a rate sweep cannot invert a duration-preserving pitch shift, and pitch is not an acceptance criterion.",
+    "Stage 2 multiplies false-accept exposure by the grid size, which is why it carries its own stricter threshold.",
+    "The catalog is 32 tracks; difficulty grows with catalog size."
+  ],
+  "sweep_calibration": {"note":"stage-2 threshold sweep on the calibration split, columnar","points":120,"columns":["threshold","true_positives","false_positives","recall_at_1","far","precision","correct_rejection_rate"],"threshold":[0.0020215633423180594,0.0033715441672285905,0.003683241252302026,0.004043126684636119,0.004067796610169492,0.004098360655737705,0.004281345565749235,0.004305043050430504,0.0044444444444444444,0.004669779853235491,0.004723346828609987,0.0047814207650273225,0.004895960832313341,0.004917025199754148,0.005198180636777128,0.0053475935828877,0.0053872053872053875,0.005409060175794456,0.00546448087431694,0.005511328842620943,0.005538461538461538,0.005717916137229987,0.005827505827505828,0.006012024048096192,0.006036217303822937,0.006072874493927126,0.0061312078479460455,0.006246096189881324,0.0066711140760507,0.006736068585425597,0.006743088334457181,0.006752608962553714,0.006765067650676507,0.0068212824010914054,0.00684931506849315,0.006896551724137931,0.0069605568445475635,0.007110536522301228,0.007352941176470588,0.007422402159244264,0.007537688442211055,0.007731958762886598,0.007990165949600492,0.008086253369272238,0.008174386920980926,0.00821917808219178,0.008484848484848486,0.008561643835616438,0.008588957055214725,0.008620689655172414,0.008771929824561403,0.008917197452229299,0.009070294784580499,0.009157509157509158,0.009216589861751152,0.009280742459396751,0.009358288770053475,0.009536784741144414,0.009562841530054645,0.009602194787379973,0.009791921664626682,0.009940357852882704,0.010075566750629723,0.010230179028132993,0.01032258064516129,0.010533707865168539,0.010615711252653927,0.010804321728691477,0.010914051841746248,0.011111111111111112,0.011306532663316583,0.011494252873563218,0.011574074074074073,0.011857707509881422,0.012121212121212121,0.01226158038147139,0.012311901504787962,0.0125,0.01282051282051282,0.013333333333333334,0.013636363636363636,0.013824884792626729,0.013921113689095127,0.014018691588785047,0.014341590612777053,0.014736842105263158,0.014861995753715499,0.015047879616963064,0.015410958904109588,0.015643802647412757,0.015730337078651686,0.01616161616161616,0.016241299303944315,0.01644736842105263,0.017333333333333333,0.0176678445229682,0.017777777777777778,0.01839080459770115,0.018518518518518517,0.01904761904761905,0.02052980132450331,0.02074688796680498,0.021367521367521368,0.022727272727272728,0.02312925170068027,0.02528735632183908,0.027149321266968326,0.034782608695652174,0.1268357810413885,0.24797843665768193,0.2797385620915033,0.33866666666666667,0.3592105263157895,0.366120218579235,0.3696236559139785,0.3997326203208556,0.4248985115020298,0.4489795918367347,0.5469387755102041,0.7089452603471295],"true_positives":[799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,799,798,798,798,798,798,798,798,798,796,796,796,796,795,795,794,794,794,794,794,794,794,794,794,791,791,791,790,790,790,790,789,787,787,785,784,783,781,781,781,781,780,779,779,779,779,779,778,778,776,776,775,774,774,774,774,773,771,771,771,770,768,767,765,763,757,753,749,741,735,731,725,721,717,709,702],"false_positives":[678,678,673,667,657,654,654,650,646,643,630,617,614,609,605,600,596,579,577,573,567,563,560,556,553,536,529,524,522,516,507,500,495,483,474,470,468,467,464,455,451,447,445,442,427,401,394,394,391,387,383,379,375,374,372,370,368,360,332,319,316,312,309,305,301,297,294,290,278,263,258,255,239,227,223,217,211,206,202,197,194,177,144,135,130,126,123,117,113,108,104,79,67,63,60,57,55,51,31,25,22,19,16,13,8,6,2,0,0,0,0,0,0,0,0,0,0,0,0,0],"recall_at_1":[0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9248,0.9236,0.9236,0.9236,0.9236,0.9236,0.9236,0.9236,0.9236,0.9213,0.9213,0.9213,0.9213,0.9201,0.9201,0.919,0.919,0.919,0.919,0.919,0.919,0.919,0.919,0.919,0.9155,0.9155,0.9155,0.9144,0.9144,0.9144,0.9144,0.9132,0.9109,0.9109,0.9086,0.9074,0.9062,0.9039,0.9039,0.9039,0.9039,0.9028,0.9016,0.9016,0.9016,0.9016,0.9016,0.9005,0.9005,0.8981,0.8981,0.897,0.8958,0.8958,0.8958,0.8958,0.8947,0.8924,0.8924,0.8924,0.8912,0.8889,0.8877,0.8854,0.8831,0.8762,0.8715,0.8669,0.8576,0.8507,0.8461,0.8391,0.8345,0.8299,0.8206,0.8125],"far":[0.922449,0.922449,0.915646,0.907483,0.893878,0.889796,0.889796,0.884354,0.878912,0.87483,0.857143,0.839456,0.835374,0.828571,0.823129,0.816327,0.810884,0.787755,0.785034,0.779592,0.771429,0.765986,0.761905,0.756463,0.752381,0.729252,0.719728,0.712925,0.710204,0.702041,0.689796,0.680272,0.673469,0.657143,0.644898,0.639456,0.636735,0.635374,0.631293,0.619048,0.613605,0.608163,0.605442,0.601361,0.580952,0.545578,0.536054,0.536054,0.531973,0.526531,0.521088,0.515646,0.510204,0.508844,0.506122,0.503401,0.50068,0.489796,0.451701,0.434014,0.429932,0.42449,0.420408,0.414966,0.409524,0.404082,0.4,0.394558,0.378231,0.357823,0.35102,0.346939,0.32517,0.308844,0.303401,0.295238,0.287075,0.280272,0.27483,0.268027,0.263946,0.240816,0.195918,0.183673,0.176871,0.171429,0.167347,0.159184,0.153741,0.146939,0.141497,0.107483,0.091156,0.085714,0.081633,0.077551,0.07483,0.069388,0.042177,0.034014,0.029932,0.02585,0.021769,0.017687,0.010884,0.008163,0.002721,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"precision":[0.5219,0.5219,0.5236,0.5257,0.5291,0.5302,0.5302,0.5316,0.533,0.5341,0.5388,0.5439,0.545,0.5469,0.5484,0.5503,0.5518,0.5584,0.5591,0.5607,0.5631,0.5651,0.5663,0.5679,0.5691,0.5765,0.5794,0.5815,0.5832,0.5858,0.5901,0.5932,0.5954,0.6021,0.6081,0.6099,0.6109,0.6118,0.6137,0.6179,0.6199,0.6218,0.6232,0.6247,0.6351,0.6525,0.6568,0.659,0.6606,0.6628,0.665,0.6672,0.67,0.6706,0.6717,0.6729,0.674,0.6789,0.6986,0.707,0.7089,0.7115,0.7134,0.716,0.7186,0.7218,0.7238,0.7264,0.7338,0.7462,0.7498,0.7517,0.7633,0.7722,0.7753,0.7796,0.7846,0.7886,0.7913,0.7951,0.7974,0.811,0.8416,0.8498,0.8545,0.8581,0.8608,0.8665,0.8704,0.8753,0.8792,0.9047,0.9175,0.9216,0.926,0.9293,0.9314,0.9359,0.9603,0.9675,0.9711,0.9747,0.9784,0.9822,0.9884,0.991,0.9961,0.9987,0.9987,0.9987,0.9987,0.9987,0.9987,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986],"correct_rejection_rate":[0.0776,0.0776,0.0844,0.0925,0.1061,0.1102,0.1102,0.1156,0.1211,0.1252,0.1429,0.1605,0.1646,0.1714,0.1769,0.1837,0.1891,0.2122,0.215,0.2204,0.2286,0.234,0.2381,0.2435,0.2476,0.2707,0.2803,0.2871,0.2898,0.298,0.3102,0.3197,0.3265,0.3429,0.3551,0.3605,0.3633,0.3646,0.3687,0.381,0.3864,0.3918,0.3946,0.3986,0.419,0.4544,0.4639,0.4639,0.468,0.4735,0.4789,0.4844,0.4898,0.4912,0.4939,0.4966,0.4993,0.5102,0.5483,0.566,0.5701,0.5755,0.5796,0.585,0.5905,0.5959,0.6,0.6054,0.6218,0.6422,0.649,0.6531,0.6748,0.6912,0.6966,0.7048,0.7129,0.7197,0.7252,0.732,0.7361,0.7592,0.8041,0.8163,0.8231,0.8286,0.8327,0.8408,0.8463,0.8531,0.8585,0.8925,0.9088,0.9143,0.9184,0.9224,0.9252,0.9306,0.9578,0.966,0.9701,0.9741,0.9782,0.9823,0.9891,0.9918,0.9973,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]}
+}
