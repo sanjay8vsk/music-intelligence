@@ -35,6 +35,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 CATALOG_VERSION = 1
+DEFAULT_CATALOG_ID = "default"
 _HASH_CHUNK = 1 << 20
 
 
@@ -83,6 +84,11 @@ class Catalog:
 
     tracks: list[CatalogTrack] = field(default_factory=list)
     version: int = CATALOG_VERSION
+    # Which tenant owns this catalog. Isolation is enforced structurally by
+    # CatalogStore, which gives every catalog its own index artifact -- this
+    # field names the owner, it does not filter anything at query time. A
+    # catalog written before tenancy existed loads as DEFAULT_CATALOG_ID.
+    catalog_id: str = DEFAULT_CATALOG_ID
 
     def __len__(self) -> int:
         return len(self.tracks)
@@ -158,6 +164,7 @@ class Catalog:
         p.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "version": self.version,
+            "catalog_id": self.catalog_id,
             "content_hash": self.content_hash(),
             "track_count": len(self.tracks),
             "total_duration_sec": round(self.total_duration_sec, 3),
@@ -176,7 +183,9 @@ class Catalog:
         if not isinstance(d, dict) or "tracks" not in d:
             raise ValueError(f"{path} is not a catalog file")
         return cls(tracks=[CatalogTrack.from_dict(t) for t in d["tracks"]],
-                   version=d.get("version", CATALOG_VERSION))
+                   version=d.get("version", CATALOG_VERSION),
+                   catalog_id=d.get("catalog_id", DEFAULT_CATALOG_ID))
 
 
-__all__ = ["CATALOG_VERSION", "Catalog", "CatalogTrack", "sha256_file"]
+__all__ = ["CATALOG_VERSION", "DEFAULT_CATALOG_ID", "Catalog", "CatalogTrack",
+           "sha256_file"]
