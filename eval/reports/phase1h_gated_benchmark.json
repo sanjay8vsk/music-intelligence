@@ -1,0 +1,1015 @@
+{
+  "schema_version": 1,
+  "phase": "1H-gated",
+  "title": "Gated speed-tolerant cascade \u2014 latency-reduced",
+  "what_changed": "orchestration only: concentration gate + 2 s probe + 4-point grid + full-query confirmation",
+  "what_did_not_change": [
+    "fingerprint.py, index.py, matcher.py, decision.py \u2014 byte-identical",
+    "cascade.py \u2014 untouched, so Phase 1H stays reproducible",
+    "the 1,728 positive queries and the 1,361-negative corpus",
+    "the split, the metrics implementation, the four acceptance criteria",
+    "the stage-1 threshold (frozen Phase 1G/1H operating point)"
+  ],
+  "provenance": {
+    "git_commit": "49f0cf2f36d61c758764b8927880ffb113d80596",
+    "git_dirty": false,
+    "git_dirty_path_count": 0,
+    "phase1_sources": [
+      "musicintel/recognition/fingerprint.py",
+      "musicintel/recognition/index.py",
+      "musicintel/recognition/matcher.py",
+      "musicintel/recognition/decision.py",
+      "musicintel/recognition/cascade.py",
+      "musicintel/recognition/gated_cascade.py",
+      "scripts/eval_phase1h_gated.py"
+    ],
+    "phase1_source_sha256": "7215a6e6b8e0006271685854ac726694aeedc66efcba4b00ad6cdeab8511a873",
+    "harness_sha256": "803a68f3d1df509f4a4c7b724e9537d4e92057375642a329405befa4ca62a721",
+    "algorithm_sha256": "d53b191a2a98f3ed57ee42dc932c5506732ab8ba20a4ca1f1ea2b6c0db3f98fc",
+    "fingerprint_format_version": 1,
+    "index_format_version": 1,
+    "recognizer_version": "landmark-gated@49f0cf2",
+    "rate_grid_percent": [
+      -4.0,
+      -2.0,
+      2.0,
+      4.0
+    ],
+    "probe_seconds": 2.0,
+    "rate_convention": "apply_rate(+p%) plays faster and higher; a recording captured at +p% is corrected by about -p%",
+    "stage1_threshold": 0.026316,
+    "gate_threshold": 0.03252,
+    "stage2_threshold": 0.02857142857142857,
+    "min_aligned_landmarks": 5,
+    "benchmark_command": "python scripts/eval_phase1h_gated.py",
+    "python": "3.11.1",
+    "executable": "/Users/vuddandisanjaybabu/Developer/music-intelligence/.venv/bin/python",
+    "platform": "macOS-26.6.1-arm64-arm-64bit",
+    "generated_utc": "2026-08-25T08:32:51+00:00"
+  },
+  "dataset": {
+    "manifest_hash": "4006aacb0abc1e7f2e12eee8a9f205a6f6b8cc563fef7a9396872cf797767a0e",
+    "split_hash": "b560583c9edab46151106ac84ef2bacc786b6d870870a905bb814152581a24d0",
+    "negative_set_hash": "fe1b10251c26251571422f3ec43bac413dee926e33fc649aac43513d361c2564",
+    "catalog_count": 32,
+    "heldout_count": 12,
+    "positive_queries": 1728,
+    "negative_queries": 1361,
+    "evaluation_negatives": 626,
+    "evaluation_negative_source_recordings": 15
+  },
+  "threshold_derivation": {
+    "stage1_threshold": 0.026316,
+    "stage1_origin": "frozen Phase 1G/1H operating point, not re-fitted",
+    "stage2_threshold": 0.02857142857142857,
+    "stage2_rule": "highest calibration Recall@1 with end-to-end cascade FAR <= 0.001, gate open, calibration split only",
+    "stage2_calibration_point": {
+      "positives": 864,
+      "negatives": 735,
+      "true_positives": 755,
+      "wrong_accepts": 1,
+      "false_negatives": 108,
+      "true_negatives": 735,
+      "false_positives": 0,
+      "recall_at_1": 0.8738,
+      "far": 0.0,
+      "precision": 0.9987,
+      "correct_rejection_rate": 1.0
+    },
+    "gate_threshold": 0.03252,
+    "gate_rule": "most aggressive gate whose calibration Recall@1 stays within 0.01 of the ungated cascade; among those, lowest calibration escalation. Calibration split only.",
+    "gate_recall_tolerance": 0.01,
+    "gate_calibration_point": {
+      "gate": 0.03252,
+      "recall_at_1": 0.8646,
+      "far": 0.0,
+      "escalation": 0.3565
+    },
+    "gate_sweep": [
+      {
+        "gate": 0.0,
+        "recall_at_1": 0.8738,
+        "far": 0.0,
+        "escalation": 0.5616
+      },
+      {
+        "gate": 0.012953,
+        "recall_at_1": 0.8738,
+        "far": 0.0,
+        "escalation": 0.5447
+      },
+      {
+        "gate": 0.014851,
+        "recall_at_1": 0.8738,
+        "far": 0.0,
+        "escalation": 0.536
+      },
+      {
+        "gate": 0.017241,
+        "recall_at_1": 0.8738,
+        "far": 0.0,
+        "escalation": 0.5266
+      },
+      {
+        "gate": 0.018307,
+        "recall_at_1": 0.8738,
+        "far": 0.0,
+        "escalation": 0.5153
+      },
+      {
+        "gate": 0.019231,
+        "recall_at_1": 0.8727,
+        "far": 0.0,
+        "escalation": 0.5072
+      },
+      {
+        "gate": 0.02029,
+        "recall_at_1": 0.8727,
+        "far": 0.0,
+        "escalation": 0.4966
+      },
+      {
+        "gate": 0.020979,
+        "recall_at_1": 0.8727,
+        "far": 0.0,
+        "escalation": 0.4866
+      },
+      {
+        "gate": 0.02193,
+        "recall_at_1": 0.8715,
+        "far": 0.0,
+        "escalation": 0.4728
+      },
+      {
+        "gate": 0.022951,
+        "recall_at_1": 0.8715,
+        "far": 0.0,
+        "escalation": 0.4628
+      },
+      {
+        "gate": 0.023952,
+        "recall_at_1": 0.8704,
+        "far": 0.0,
+        "escalation": 0.4534
+      },
+      {
+        "gate": 0.024896,
+        "recall_at_1": 0.8692,
+        "far": 0.0,
+        "escalation": 0.4434
+      },
+      {
+        "gate": 0.025641,
+        "recall_at_1": 0.8681,
+        "far": 0.0,
+        "escalation": 0.4334
+      },
+      {
+        "gate": 0.026549,
+        "recall_at_1": 0.8681,
+        "far": 0.0,
+        "escalation": 0.4221
+      },
+      {
+        "gate": 0.027473,
+        "recall_at_1": 0.8681,
+        "far": 0.0,
+        "escalation": 0.4115
+      },
+      {
+        "gate": 0.028689,
+        "recall_at_1": 0.8669,
+        "far": 0.0,
+        "escalation": 0.3977
+      },
+      {
+        "gate": 0.029851,
+        "recall_at_1": 0.8657,
+        "far": 0.0,
+        "escalation": 0.3871
+      },
+      {
+        "gate": 0.031111,
+        "recall_at_1": 0.8646,
+        "far": 0.0,
+        "escalation": 0.3759
+      },
+      {
+        "gate": 0.032258,
+        "recall_at_1": 0.8646,
+        "far": 0.0,
+        "escalation": 0.3602
+      },
+      {
+        "gate": 0.033333,
+        "recall_at_1": 0.8611,
+        "far": 0.0,
+        "escalation": 0.3471
+      },
+      {
+        "gate": 0.034653,
+        "recall_at_1": 0.86,
+        "far": 0.0,
+        "escalation": 0.3327
+      },
+      {
+        "gate": 0.036101,
+        "recall_at_1": 0.8576,
+        "far": 0.0,
+        "escalation": 0.3196
+      },
+      {
+        "gate": 0.0375,
+        "recall_at_1": 0.8565,
+        "far": 0.0,
+        "escalation": 0.3039
+      },
+      {
+        "gate": 0.039216,
+        "recall_at_1": 0.8553,
+        "far": 0.0,
+        "escalation": 0.2877
+      },
+      {
+        "gate": 0.041096,
+        "recall_at_1": 0.8542,
+        "far": 0.0,
+        "escalation": 0.2714
+      },
+      {
+        "gate": 0.042857,
+        "recall_at_1": 0.8519,
+        "far": 0.0,
+        "escalation": 0.2514
+      },
+      {
+        "gate": 0.044554,
+        "recall_at_1": 0.8495,
+        "far": 0.0,
+        "escalation": 0.2376
+      },
+      {
+        "gate": 0.046875,
+        "recall_at_1": 0.8449,
+        "far": 0.0,
+        "escalation": 0.2233
+      },
+      {
+        "gate": 0.05,
+        "recall_at_1": 0.8403,
+        "far": 0.0,
+        "escalation": 0.2051
+      },
+      {
+        "gate": 0.051948,
+        "recall_at_1": 0.8391,
+        "far": 0.0,
+        "escalation": 0.1914
+      },
+      {
+        "gate": 0.054795,
+        "recall_at_1": 0.838,
+        "far": 0.0,
+        "escalation": 0.177
+      },
+      {
+        "gate": 0.057692,
+        "recall_at_1": 0.8345,
+        "far": 0.0,
+        "escalation": 0.1632
+      },
+      {
+        "gate": 0.060377,
+        "recall_at_1": 0.8333,
+        "far": 0.0,
+        "escalation": 0.1463
+      },
+      {
+        "gate": 0.06383,
+        "recall_at_1": 0.8252,
+        "far": 0.0,
+        "escalation": 0.127
+      },
+      {
+        "gate": 0.068966,
+        "recall_at_1": 0.8218,
+        "far": 0.0,
+        "escalation": 0.1157
+      },
+      {
+        "gate": 0.074074,
+        "recall_at_1": 0.8218,
+        "far": 0.0,
+        "escalation": 0.0988
+      },
+      {
+        "gate": 0.080808,
+        "recall_at_1": 0.8183,
+        "far": 0.0,
+        "escalation": 0.0832
+      },
+      {
+        "gate": 0.087719,
+        "recall_at_1": 0.8171,
+        "far": 0.0,
+        "escalation": 0.07
+      },
+      {
+        "gate": 0.097561,
+        "recall_at_1": 0.8148,
+        "far": 0.0,
+        "escalation": 0.0557
+      },
+      {
+        "gate": 0.114286,
+        "recall_at_1": 0.8125,
+        "far": 0.0,
+        "escalation": 0.0413
+      },
+      {
+        "gate": 0.147059,
+        "recall_at_1": 0.8125,
+        "far": 0.0,
+        "escalation": 0.0288
+      },
+      {
+        "gate": 0.263158,
+        "recall_at_1": 0.8125,
+        "far": 0.0,
+        "escalation": 0.0113
+      }
+    ]
+  },
+  "results": {
+    "evaluation_cascade": {
+      "positives": 864,
+      "negatives": 626,
+      "true_positives": 716,
+      "wrong_accepts": 1,
+      "false_negatives": 147,
+      "true_negatives": 623,
+      "false_positives": 3,
+      "recall_at_1": 0.8287,
+      "far": 0.004792,
+      "precision": 0.9944,
+      "correct_rejection_rate": 0.9952
+    },
+    "evaluation_stage1_only": {
+      "positives": 864,
+      "negatives": 626,
+      "true_positives": 678,
+      "wrong_accepts": 0,
+      "false_negatives": 186,
+      "true_negatives": 625,
+      "false_positives": 1,
+      "recall_at_1": 0.7847,
+      "far": 0.001597,
+      "precision": 0.9985,
+      "correct_rejection_rate": 0.9984
+    },
+    "all_queries_cascade": {
+      "positives": 1728,
+      "negatives": 1361,
+      "true_positives": 1463,
+      "wrong_accepts": 2,
+      "false_negatives": 263,
+      "true_negatives": 1358,
+      "false_positives": 3,
+      "recall_at_1": 0.8466,
+      "far": 0.002204,
+      "precision": 0.9966,
+      "correct_rejection_rate": 0.9978
+    },
+    "all_queries_stage1_only": {
+      "positives": 1728,
+      "negatives": 1361,
+      "true_positives": 1378,
+      "wrong_accepts": 1,
+      "false_negatives": 349,
+      "true_negatives": 1360,
+      "false_positives": 1,
+      "recall_at_1": 0.7975,
+      "far": 0.000735,
+      "precision": 0.9986,
+      "correct_rejection_rate": 0.9993
+    },
+    "far_by_category_evaluation": {
+      "negative_near_silence": {
+        "positives": 0,
+        "negatives": 14,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 14,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_noise_pink": {
+        "positives": 0,
+        "negatives": 10,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 10,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_noise_white": {
+        "positives": 0,
+        "negatives": 13,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 13,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_out_of_catalog_music": {
+        "positives": 0,
+        "negatives": 569,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 566,
+        "false_positives": 3,
+        "recall_at_1": null,
+        "far": 0.005272,
+        "precision": 0.0,
+        "correct_rejection_rate": 0.9947
+      },
+      "negative_silence": {
+        "positives": 0,
+        "negatives": 8,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 8,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      },
+      "negative_speech": {
+        "positives": 0,
+        "negatives": 12,
+        "true_positives": 0,
+        "wrong_accepts": 0,
+        "false_negatives": 0,
+        "true_negatives": 12,
+        "false_positives": 0,
+        "recall_at_1": null,
+        "far": 0.0,
+        "precision": null,
+        "correct_rejection_rate": 1.0
+      }
+    },
+    "false_accepts": [
+      {
+        "query_id": "ia_alg-045D-InPassing__neg_music__d3s__beginning",
+        "category": "negative_out_of_catalog_music",
+        "cohort": "phase1e",
+        "stage": 2,
+        "rate": 2.0,
+        "matched": "ia_30-hcir-berthaJamesSplit-RWT-012"
+      },
+      {
+        "query_id": "neg__ia_2018.01.24__d3s__t91.0",
+        "category": "negative_out_of_catalog_music",
+        "cohort": "phase1g",
+        "stage": 2,
+        "rate": -4.0,
+        "matched": "ia_32EP02Descent_1"
+      },
+      {
+        "query_id": "neg__ia_alg056__d3s__t163.0",
+        "category": "negative_out_of_catalog_music",
+        "cohort": "phase1g",
+        "stage": 1,
+        "rate": 0.0,
+        "matched": "ia_32EP02Descent_1"
+      }
+    ]
+  },
+  "cascade_behaviour": {
+    "stage1_match_rate": 0.4467,
+    "gate_pass_rate": 0.3652,
+    "escalation_rate": 0.3652,
+    "probe_pass_rate": 0.237,
+    "stage2_acceptances": 88,
+    "gate_skipped_negatives": 0.3571,
+    "winning_rate_histogram": {
+      "-4%": 22,
+      "-2%": 24,
+      "+2%": 29,
+      "+4%": 13
+    }
+  },
+  "by_family": {
+    "clean": {
+      "queries": 288,
+      "stage1_recall_at_1": 0.8889,
+      "cascade_recall_at_1": 0.8889,
+      "delta": 0.0
+    },
+    "codec": {
+      "queries": 480,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    "filter": {
+      "queries": 192,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    "noise": {
+      "queries": 512,
+      "stage1_recall_at_1": 0.875,
+      "cascade_recall_at_1": 0.875,
+      "delta": 0.0
+    },
+    "pitch": {
+      "queries": 128,
+      "stage1_recall_at_1": 0.0078,
+      "cascade_recall_at_1": 0.0078,
+      "delta": 0.0
+    },
+    "speed": {
+      "queries": 128,
+      "stage1_recall_at_1": 0.0078,
+      "cascade_recall_at_1": 0.6719,
+      "delta": 0.6641
+    }
+  },
+  "by_condition": [
+    {
+      "condition": "clean_duration_10s",
+      "family": "clean",
+      "queries": 96,
+      "stage1_recall_at_1": 0.9583,
+      "cascade_recall_at_1": 0.9583,
+      "delta": 0.0
+    },
+    {
+      "condition": "clean_duration_3s",
+      "family": "clean",
+      "queries": 96,
+      "stage1_recall_at_1": 0.8021,
+      "cascade_recall_at_1": 0.8021,
+      "delta": 0.0
+    },
+    {
+      "condition": "clean_duration_5s",
+      "family": "clean",
+      "queries": 96,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_128k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_128k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_128k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_32k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_32k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_32k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_64k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_64k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_mp3_64k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_32k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_32k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_32k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_64k_duration_10s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_64k_duration_3s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "codec_opus_64k_duration_5s",
+      "family": "codec",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_lowpass8k_duration_10s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_lowpass8k_duration_3s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_lowpass8k_duration_5s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_telephone_duration_10s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_telephone_duration_3s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "filter_telephone_duration_5s",
+      "family": "filter",
+      "queries": 32,
+      "stage1_recall_at_1": 1.0,
+      "cascade_recall_at_1": 1.0,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr0db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.7188,
+      "cascade_recall_at_1": 0.7188,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr0db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.75,
+      "cascade_recall_at_1": 0.75,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr0db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.7188,
+      "cascade_recall_at_1": 0.7188,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr10db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr10db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr10db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr20db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr20db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr20db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr5db_duration_10s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr5db_duration_3s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.8438,
+      "cascade_recall_at_1": 0.8438,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_pink_snr5db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.875,
+      "cascade_recall_at_1": 0.875,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr0db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.7812,
+      "cascade_recall_at_1": 0.7812,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr10db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9375,
+      "cascade_recall_at_1": 0.9375,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr20db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9688,
+      "cascade_recall_at_1": 0.9688,
+      "delta": 0.0
+    },
+    {
+      "condition": "noise_white_snr5db_duration_5s",
+      "family": "noise",
+      "queries": 32,
+      "stage1_recall_at_1": 0.9062,
+      "cascade_recall_at_1": 0.9062,
+      "delta": 0.0
+    },
+    {
+      "condition": "pitch_+1st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.0,
+      "delta": 0
+    },
+    {
+      "condition": "pitch_+2st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.0,
+      "delta": 0
+    },
+    {
+      "condition": "pitch_-1st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.0,
+      "delta": 0
+    },
+    {
+      "condition": "pitch_-2st_duration_5s",
+      "family": "pitch",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0312,
+      "cascade_recall_at_1": 0.0312,
+      "delta": 0.0
+    },
+    {
+      "condition": "speed_+2pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0312,
+      "cascade_recall_at_1": 0.7812,
+      "delta": 0.75
+    },
+    {
+      "condition": "speed_+5pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.6562,
+      "delta": 0.6562
+    },
+    {
+      "condition": "speed_-2pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.875,
+      "delta": 0.875
+    },
+    {
+      "condition": "speed_-5pct_duration_5s",
+      "family": "speed",
+      "queries": 32,
+      "stage1_recall_at_1": 0.0,
+      "cascade_recall_at_1": 0.375,
+      "delta": 0.375
+    }
+  ],
+  "falsification_criteria": {
+    "1_speed_recall_ge_60pct": {
+      "value": 0.6719,
+      "target": 0.6,
+      "pass": true
+    },
+    "2_preserved_families_within_-1pp": {
+      "deltas_vs_stage1": {
+        "clean": 0.0,
+        "noise": 0.0,
+        "codec": 0.0,
+        "filter": 0.0
+      },
+      "target": -0.01,
+      "pass": true
+    },
+    "3_holdout_far_le_5pct": {
+      "value": 0.004792,
+      "target": 0.05,
+      "pass": true
+    },
+    "4_p50_latency_le_40ms": {
+      "value": 26.671,
+      "target": 40.0,
+      "pass": true
+    },
+    "all_passed": true
+  },
+  "timing_ms": {
+    "stage1_ms": {
+      "p50": 14.93,
+      "p95": 43.533
+    },
+    "probe_ms_when_gate_passed": {
+      "p50": 22.516,
+      "p95": 35.772
+    },
+    "confirm_ms_when_probe_passed": {
+      "p50": 13.185,
+      "p95": 33.983
+    },
+    "total_ms": {
+      "p50": 26.671,
+      "p95": 70.785,
+      "p99": 105.427,
+      "mean": 31.592
+    }
+  },
+  "phase1h_reference": {
+    "note": "Ungated Phase 1H, same corpus and criteria.",
+    "evaluation": {
+      "threshold": 0.034782608695652174,
+      "positives": 864,
+      "negatives": 626,
+      "true_positives": 742,
+      "wrong_accepts": 2,
+      "false_negatives": 120,
+      "true_negatives": 624,
+      "false_positives": 2,
+      "recall_at_1": 0.8588,
+      "far": 0.003195,
+      "precision": 0.9946,
+      "correct_rejection_rate": 0.9968
+    },
+    "p50_ms": 144.456,
+    "escalation_rate": 0.5533
+  },
+  "limitations": [
+    "FAR rests on 626 evaluation negatives from 15 source recordings; excerpt count is not statistical sample size.",
+    "The gate's discriminative power is weak (AUC 0.639 measured in the Phase 1H investigation). It works because only ~20% of negatives need skipping, which makes the design sensitive to the corpus's negative share.",
+    "Pitch is unaddressed by design and is not an acceptance criterion.",
+    "The catalog is 32 tracks; difficulty grows with catalog size."
+  ],
+  "sweep_calibration": {"note":"stage-2 sweep at the chosen gate, calibration split, columnar","points":112,"columns":["threshold","true_positives","false_positives","recall_at_1","far","precision"],"threshold":[0.0030599755201958386,0.003107520198881293,0.003238341968911917,0.0033806626098715348,0.003674219228413962,0.003683241252302026,0.0036923076923076922,0.003738317757009346,0.0037735849056603774,0.003821656050955414,0.004045853000674309,0.004054054054054054,0.004225352112676056,0.00428921568627451,0.004331683168316832,0.004438807863031071,0.004536616979909268,0.004720161834120027,0.00472972972972973,0.0047457627118644066,0.004901960784313725,0.005,0.005031446540880503,0.005390835579514825,0.005518087063151441,0.005688282138794084,0.005807200929152149,0.00591016548463357,0.006038647342995169,0.006064690026954178,0.006089309878213802,0.006119951040391677,0.006142506142506142,0.006172839506172839,0.0063119927862939585,0.006596306068601583,0.006738544474393531,0.006802721088435374,0.0068212824010914054,0.0068322981366459624,0.00684931506849315,0.006868131868131868,0.006936416184971098,0.007050528789659225,0.00718562874251497,0.007237635705669481,0.007317073170731708,0.007453416149068323,0.007566204287515763,0.007623888182973317,0.007692307692307693,0.007772020725388601,0.008086253369272238,0.008174386920980926,0.00819672131147541,0.00823045267489712,0.008275862068965517,0.008576329331046312,0.008706467661691543,0.009216589861751152,0.009308510638297872,0.009505703422053232,0.009549795361527967,0.009589041095890411,0.009671179883945842,0.00998003992015968,0.010101010101010102,0.01026694045174538,0.010330578512396695,0.01050420168067227,0.010810810810810811,0.010869565217391304,0.01090909090909091,0.010958904109589041,0.011235955056179775,0.011428571428571429,0.011547344110854504,0.01160092807424594,0.011741682974559686,0.011986301369863013,0.01226158038147139,0.012345679012345678,0.01276595744680851,0.013108614232209739,0.013623978201634877,0.013856812933025405,0.013888888888888888,0.01417004048582996,0.014830508474576272,0.015503875968992248,0.016091954022988506,0.016194331983805668,0.01634877384196185,0.017777777777777778,0.018433179723502304,0.019867549668874173,0.02074688796680498,0.024242424242424242,0.02857142857142857,0.03551912568306011,0.04217687074829932,0.05352480417754569,0.060191518467852256,0.08583106267029973,0.10217983651226158,0.12670299727520437,0.33866666666666667,0.3615279672578445,0.3696236559139785,0.47275204359673023,0.5899182561307902,0.7089452603471295],"true_positives":[758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,758,757,757,757,757,757,757,757,757,757,757,757,757,756,756,756,756,756,756,756,755,755,755,755,755,755,755,755,755,755,755,754,754,754,754,754,754,754,754,754,753,753,753,753,753,753,753,753,753,753,753,753,753,753,752,752,751,751,750,750,750,750,749,749,749,749,749,749,749,749,749,749,749,748,747,747,745,742,739,738,736,733,732,729,724,718,712,706,702],"false_positives":[297,295,294,294,293,291,288,288,286,285,284,281,281,281,279,278,276,271,271,270,267,265,263,260,255,253,252,251,250,249,249,246,246,244,243,240,239,238,229,229,227,225,222,221,221,220,219,217,215,213,211,210,208,200,188,183,180,179,178,175,173,172,166,163,162,160,158,156,155,153,150,147,143,141,140,138,112,107,101,99,96,96,94,91,88,49,45,38,35,33,30,18,15,13,11,7,5,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"recall_at_1":[0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8773,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.8762,0.875,0.875,0.875,0.875,0.875,0.875,0.875,0.8738,0.8738,0.8738,0.8738,0.8738,0.8738,0.8738,0.8738,0.8738,0.8738,0.8738,0.8727,0.8727,0.8727,0.8727,0.8727,0.8727,0.8727,0.8727,0.8727,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8715,0.8704,0.8704,0.8692,0.8692,0.8681,0.8681,0.8681,0.8681,0.8669,0.8669,0.8669,0.8669,0.8669,0.8669,0.8669,0.8669,0.8669,0.8669,0.8669,0.8657,0.8646,0.8646,0.8623,0.8588,0.8553,0.8542,0.8519,0.8484,0.8472,0.8438,0.838,0.831,0.8241,0.8171,0.8125],"far":[0.404082,0.401361,0.4,0.4,0.398639,0.395918,0.391837,0.391837,0.389116,0.387755,0.386395,0.382313,0.382313,0.382313,0.379592,0.378231,0.37551,0.368707,0.368707,0.367347,0.363265,0.360544,0.357823,0.353741,0.346939,0.344218,0.342857,0.341497,0.340136,0.338776,0.338776,0.334694,0.334694,0.331973,0.330612,0.326531,0.32517,0.32381,0.311565,0.311565,0.308844,0.306122,0.302041,0.30068,0.30068,0.29932,0.297959,0.295238,0.292517,0.289796,0.287075,0.285714,0.282993,0.272109,0.255782,0.24898,0.244898,0.243537,0.242177,0.238095,0.235374,0.234014,0.22585,0.221769,0.220408,0.217687,0.214966,0.212245,0.210884,0.208163,0.204082,0.2,0.194558,0.191837,0.190476,0.187755,0.152381,0.145578,0.137415,0.134694,0.130612,0.130612,0.127891,0.12381,0.119728,0.066667,0.061224,0.051701,0.047619,0.044898,0.040816,0.02449,0.020408,0.017687,0.014966,0.009524,0.006803,0.004082,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"precision":[0.6967,0.698,0.6986,0.6986,0.6993,0.7006,0.7025,0.7025,0.7038,0.7045,0.7051,0.7071,0.7071,0.7071,0.7084,0.7091,0.7104,0.7137,0.7137,0.7144,0.7164,0.7185,0.7198,0.7219,0.7251,0.7265,0.7279,0.7293,0.7307,0.7328,0.7328,0.735,0.735,0.7364,0.7371,0.7393,0.7405,0.7426,0.753,0.753,0.7552,0.7575,0.7598,0.7611,0.7611,0.7619,0.7634,0.7649,0.7665,0.7681,0.7704,0.7712,0.7728,0.7816,0.792,0.7962,0.7987,0.8004,0.8013,0.8038,0.8056,0.8064,0.8125,0.8149,0.8158,0.8176,0.8203,0.823,0.8248,0.8275,0.8302,0.833,0.8367,0.8385,0.8395,0.8413,0.8665,0.8714,0.8775,0.8794,0.8825,0.8824,0.8844,0.8876,0.8907,0.9351,0.941,0.9493,0.9529,0.9566,0.9603,0.9753,0.9791,0.9817,0.9842,0.9894,0.992,0.9947,0.9987,0.9987,0.9987,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986,0.9986]}
+}
