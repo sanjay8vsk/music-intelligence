@@ -20,7 +20,11 @@ from musicintel.recognition.index import build_index
 from musicintel.recognition.matcher import (
     MatchConfig,
     MatchResult,
+    _best_cluster,
+    _best_cluster_compiled,
+    _count_distinct,
     match,
+    warm_up,
 )
 
 SR = 11025
@@ -220,7 +224,7 @@ class TestOffsetClusters:
             + [(300 + i, i * 4) for i in range(20)]
             + [(400 + i, i * 4) for i in range(9)]
         )
-        r = match(query, idx)
+        r = match(query, idx, compute_second_best=True)
         c = r.candidates[0]
         assert c.best_offset == 800
         assert c.score == 20
@@ -230,7 +234,9 @@ class TestOffsetClusters:
     def test_second_best_excludes_the_winning_window(self):
         pairs = [(500 + i, i * 4 + 300) for i in range(10)]
         idx = build_index([("A", _fp(pairs))])
-        r = match(_fp([(500 + i, i * 4) for i in range(10)]), idx)
+        r = match(
+            _fp([(500 + i, i * 4) for i in range(10)]), idx, compute_second_best=True
+        )
         c = r.candidates[0]
         assert c.best_offset == 300
         assert c.second_best_score == 0  # only one cluster exists
@@ -378,3 +384,110 @@ class TestContract:
         assert isinstance(c.score, int)
         assert c.score > 1.0  # a count, not a [0,1] quantity
         assert not hasattr(c, "confidence") and not hasattr(c, "probability")
+
+
+# ------------------------------------------------------- compiled kernel ----
+class TestCompiledBestCluster:
+    """`_best_cluster` is the reference; `_best_cluster_compiled` is what runs.
+
+    These tests exist so the pair cannot drift. If someone edits one and not the
+    other, the randomised comparison below fails rather than the difference
+    reaching a benchmark months later.
+    """
+
+    @pytest.mark.parametrize("tolerance", [0, 1, 2, 5])
+    def test_compiled_matches_reference_on_randomised_inputs(self, tolerance):
+        rng = np.random.default_rng(20260827)
+        for _ in range(300):
+            size = int(rng.integers(0, 60))
+            n_query = int(rng.integers(1, 40))
+            offsets = np.sort(rng.integers(-50, 50, size)).astype(np.int64)
+            query_idx = rng.integers(0, n_query, size).astype(np.int64)
+            assert tuple(_best_cluster(offsets, query_idx, tolerance)) == tuple(
+                _best_cluster_compiled(offsets, query_idx, tolerance, n_query)
+            )
+
+    def test_compiled_breaks_offset_ties_toward_the_smaller_value(self):
+        """Two offsets equally common in the window; the smaller is reported."""
+        offsets = np.array([10, 10, 20, 20], dtype=np.int64)
+        query_idx = np.array([0, 1, 2, 3], dtype=np.int64)
+        assert _best_cluster_compiled(offsets, query_idx, 10, 4)[2] == 10
+        assert _best_cluster(offsets, query_idx, 10)[2] == 10
+
+    def test_compiled_keeps_the_earliest_window_on_a_tie(self):
+        """Two windows with identical (distinct, hits); the earlier one wins."""
+        offsets = np.array([0, 1, 100, 101], dtype=np.int64)
+        query_idx = np.array([0, 1, 2, 3], dtype=np.int64)
+        ref = _best_cluster(offsets, query_idx, 2)
+        assert tuple(_best_cluster_compiled(offsets, query_idx, 2, 4)) == tuple(ref)
+        assert ref[3] == 0 and ref[4] == 1  # the earlier window, not 100..101
+
+    def test_count_distinct_matches_numpy(self):
+        rng = np.random.default_rng(7)
+        for _ in range(200):
+            v = rng.integers(0, 30, int(rng.integers(0, 80))).astype(np.int64)
+            assert _count_distinct(v) == int(np.unique(v).size)
+
+    def test_empty_input_is_handled(self):
+        empty = np.empty(0, dtype=np.int64)
+        assert tuple(_best_cluster_compiled(empty, empty, 2, 1)) == (0, 0, 0, 0, 0)
+        assert _count_distinct(empty) == 0
+
+
+class TestSecondBestIsLazy:
+    """The runner-up pass is opt-in; opting in reproduces the eager values."""
+
+    @staticmethod
+    def _two_clusters():
+        pairs = [(300 + i, i * 4 + 800) for i in range(20)]
+        pairs += [(400 + i, i * 4 + 1500) for i in range(9)]
+        idx = build_index([("A", _fp(pairs))])
+        query = _fp(
+            [(300 + i, i * 4) for i in range(20)]
+            + [(400 + i, i * 4) for i in range(9)]
+        )
+        return query, idx
+
+    def test_default_does_not_compute_the_runner_up(self):
+        query, idx = self._two_clusters()
+        c = match(query, idx).candidates[0]
+        assert c.second_best_score == 0
+        assert c.second_best_offset is None
+        assert c.margin == c.score  # margin degenerates to score, by construction
+
+    def test_opting_in_recovers_the_runner_up(self):
+        query, idx = self._two_clusters()
+        c = match(query, idx, compute_second_best=True).candidates[0]
+        assert c.second_best_score == 9
+        assert c.second_best_offset == 1500
+        assert c.margin == c.score - 9
+
+    def test_laziness_changes_nothing_else(self):
+        """Every field the recognition path reads is identical either way."""
+        query, idx = self._two_clusters()
+        lazy = match(query, idx)
+        eager = match(query, idx, compute_second_best=True)
+        assert len(lazy.candidates) == len(eager.candidates)
+        for a, b in zip(lazy.candidates, eager.candidates):
+            for field in (
+                "track_id",
+                "score",
+                "best_offset",
+                "best_offset_seconds",
+                "best_offset_count",
+                "total_hits",
+                "matched_query_landmarks",
+                "concentration",
+            ):
+                assert getattr(a, field) == getattr(b, field), field
+        assert lazy.total_hits == eager.total_hits
+        assert lazy.matched_query_landmarks == eager.matched_query_landmarks
+
+
+class TestWarmUp:
+    def test_warm_up_is_idempotent_and_reports_seconds(self):
+        first = warm_up()
+        second = warm_up()
+        assert first >= 0.0 and second >= 0.0
+        # Already compiled by the time any test runs, so the second call is cheap.
+        assert second < 0.5

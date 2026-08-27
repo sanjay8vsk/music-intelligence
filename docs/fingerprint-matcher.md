@@ -140,9 +140,77 @@ always considers every track with a hit.
 | `best_offset_count` | raw hits inside the winning window |
 | `total_hits` | every posting retrieved for this track, aligned or not |
 | `matched_query_landmarks` | distinct query landmarks touching this track at any offset |
-| `second_best_offset` / `second_best_score` | best cluster **disjoint** from the winner, so it is a genuine alternative alignment rather than the same peak shifted by a frame |
+| `second_best_offset` / `second_best_score` | best cluster **disjoint** from the winner, so it is a genuine alternative alignment rather than the same peak shifted by a frame. Computed only when `match(..., compute_second_best=True)`; otherwise reported as `(None, 0)` — see [The compiled cluster search](#the-compiled-cluster-search) |
 | `concentration` | `score / matched_query_landmarks` — a dispersion measure, **not** a confidence |
-| `margin` | `score - second_best_score` |
+| `margin` | `score - second_best_score`. Equals `score` when the runner-up pass is off. Distinct from `MatchDecision.margin`, which compares the top two **tracks**. |
+
+## The compiled cluster search
+
+The sliding-window cluster search is the matcher's whole cost, and it is
+JIT-compiled with **Numba**. `_best_cluster` remains in the module as the
+readable reference implementation; `_best_cluster_compiled` is what actually
+runs. `tests/test_matcher.py` asserts the two agree on randomised inputs across
+tolerances 0/1/2/5, so the pair cannot drift apart unnoticed.
+
+**Why.** Measured on a 500-track index (14,574,966 postings), the Python loop
+cost **0.555 µs per retrieved posting**. A 5 s query retrieves ~136k postings,
+so the loop alone was ~75 ms of a ~190 ms median, and it grew linearly with
+catalog size. Compiled, the same loop costs **0.005 µs per posting — 102×
+faster** — which is what brings end-to-end p95 from 468 ms to 84 ms and under
+the Stage 3 300 ms bar.
+
+**The translation is exact, not an approximation.** Two substitutions were
+needed because Numba compiles neither original construct:
+
+- the `dict` counter becomes a fixed-size array indexed by query landmark id —
+  exact because ids are `arange(len(query))` repeated, hence dense in
+  `[0, n_query)`;
+- `np.unique(..., return_counts=True)` + `argmax` becomes an explicit run scan
+  over the already-sorted window — exact because `argmax` over ascending unique
+  values returns the first maximum, i.e. the smallest value among ties, which is
+  the same tie-break the scan makes.
+
+Tie-breaking and the earliest-window rule are unchanged. Equivalence was
+verified over 19,929 real per-track slices covering 5,769,455 postings, 16,000
+randomised slices, and 200 full 5 s queries against a 500-track catalog: zero
+differences in `track_id`, `score`, `best_offset`, `best_offset_count`,
+`total_hits`, `matched_query_landmarks` or `concentration`, zero differences in
+`decide()` output, and exact reproduction of every published Phase 1H metric.
+
+### The runner-up pass is opt-in
+
+`match()` takes `compute_second_best`, defaulting to **False**. The runner-up
+search is a second pass over every candidate track, and nothing in the
+recognition path reads its result — `decision.py`'s runner-up is
+`candidates[1]`, a different *track*. Left on it costs ~2.6 ms per query at 500
+tracks for a number no caller looks at.
+
+With it off, `second_best_score` is `0`, `second_best_offset` is `None`, and
+`margin` therefore equals `score`. Pass `compute_second_best=True` to get the
+alternative-alignment evidence; the values are identical to what the
+always-on version produced.
+
+### Effect on provenance
+
+`matcher.py` is in `PHASE1_SOURCES`, so `phase1_source_sha256` in every future
+report changes with this commit
+(`7215a6e6…` → `db673ddf…`). That is the provenance system working as designed:
+the recognizer source moved, and reports must say so. The **published** Phase
+0/1 reports are unchanged and remain the reference; a regenerated Phase 1H run
+reproduces all of their metrics exactly while carrying the new fingerprint.
+
+### JIT warm-up
+
+Compilation happens on first use and costs **~1.2 s**, measured separately from
+steady-state latency and never folded into reported percentiles. `warm_up()`
+pays it deliberately at process start, and `RecognitionService.__init__` calls
+it, so anything constructed through the service is warm before its first query.
+Construct the service with `warm_up=False` to skip it.
+
+Numba's on-disk cache (`cache=True`) is **deliberately not used**: it writes
+`.nbi`/`.nbc` files next to the module, which fails or silently degrades on a
+read-only install. Paying ~1.2 s once per process at a controlled moment is the
+better trade.
 
 ## Measured behaviour
 
@@ -172,10 +240,11 @@ Per-stage timing over six full-track queries:
 - **No decision.** Ranking only; NO_MATCH, thresholds and calibration are 1D.
 - **The score is a raw count.** It is not comparable across queries of different
   lengths — a longer query simply has more landmarks to align.
-- **Histogram dominates full-track queries** (~706 ms each): the cluster search
-  is a Python loop over that track's hits, and a full-track self-query produces
-  tens of thousands. Realistic short queries cost 10–64 ms. Left unoptimized on
-  purpose; correctness and inspectability come first.
+- **Histogram still dominates**, though far less than it did. The cluster search
+  was a Python loop and is now compiled (see above), which cut its cost 102× per
+  posting; what remains in the histogram stage is the lexsort and per-track
+  numpy work, not the window scan. Retained here because the *shape* of the cost
+  is unchanged: histogram time still grows with postings retrieved.
 - **No cap on postings per hash.** A pathologically hot hash in a large catalog
   would pull in a large posting list. Harmless at corpus scale, needs a guard
   before a big catalog.

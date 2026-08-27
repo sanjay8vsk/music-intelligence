@@ -46,7 +46,7 @@ from musicintel.recognition.gated_cascade import (
     GatedCascadeConfig,
     identify_gated,
 )
-from musicintel.recognition.matcher import MatchConfig
+from musicintel.recognition.matcher import MatchConfig, warm_up as warm_up_matcher
 
 # Calibrated on the calibration split; see eval/reports/phase1h_gated_benchmark.md.
 STAGE1_THRESHOLD = 0.026316
@@ -123,6 +123,7 @@ class RecognitionService:
         match_config: MatchConfig | None = None,
         fingerprint_config: FingerprintConfig | None = None,
         cache_catalogs: bool = True,
+        warm_up: bool = True,
     ) -> None:
         self.store = store
         self.cascade_config = cascade_config or default_cascade_config()
@@ -130,6 +131,11 @@ class RecognitionService:
         self.fingerprint_config = fingerprint_config or FingerprintConfig()
         self._cache: dict[str, LoadedCatalog] = {}
         self._cache_enabled = cache_catalogs
+        # The matcher's hot loop is JIT-compiled, and the first call pays for it
+        # (~1.1 s measured). Doing that here means it lands in process start-up
+        # rather than in whichever query happens to arrive first. Anything that
+        # constructs a service is warm before it serves.
+        self.warm_up_seconds = warm_up_matcher() if warm_up else 0.0
 
     # -- catalogs ---------------------------------------------------------
     def catalogs(self) -> list[str]:

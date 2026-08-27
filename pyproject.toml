@@ -15,6 +15,7 @@ dependencies = [
     "sounddevice",
     "requests",          # fixture-corpus fetching
     "faiss-cpu",         # baseline MFCC/FAISS recognizer under evaluation
+    "numba>=0.58",       # compiles the matcher's offset-cluster loop; see matcher.py
 ]
 
 [project.optional-dependencies]

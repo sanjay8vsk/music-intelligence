@@ -78,6 +78,29 @@ layer. There is no confidence field, and a test asserts none appears.
 Catalogs are cached between queries — building an index costs seconds, a query
 costs milliseconds. `unload()` drops them.
 
+## Deployment: JIT warm-up
+
+The matcher's cluster search is compiled with **Numba** (an explicit runtime
+dependency — see `pyproject.toml`, and
+[the matcher doc](fingerprint-matcher.md#the-compiled-cluster-search)).
+Compilation happens on first use and costs **~1.2 s**.
+
+`RecognitionService.__init__` calls `warm_up()` so that cost lands at
+construction rather than inside whichever query arrives first, and records it as
+`svc.warm_up_seconds`. Two operational consequences:
+
+- **Construct the service before accepting traffic.** A service built lazily on
+  the first request adds ~1.2 s to that request. Constructing it at process
+  start-up removes the outlier entirely.
+- **The cost is per process, not per host.** Every worker in a multi-process
+  deployment compiles once. Warm-up is cheap relative to loading a catalog
+  index, so doing it eagerly in each worker is the right default.
+
+Pass `RecognitionService(store, warm_up=False)` to skip it — useful in tests
+that never match, and nowhere else. Numba's on-disk cache is deliberately not
+used, because it writes into the package directory, which is often read-only in
+a container.
+
 ## Thresholds
 
 Reproduced from `eval/reports/phase1h_gated_benchmark.md`, the calibrated

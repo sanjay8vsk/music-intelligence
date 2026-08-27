@@ -52,6 +52,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from numba import njit
 
 from musicintel.recognition.fingerprint import (
     FingerprintConfig,
@@ -255,12 +256,133 @@ def _best_cluster(
     return best_score, best_hits, best_offset, int(window[0]), int(window[-1])
 
 
+# The same algorithm, compiled. `_best_cluster` above stays as the readable
+# reference and as the executable specification -- tests/test_matcher.py asserts
+# the two agree on randomised inputs, so this pair cannot drift silently.
+#
+# Why compiled at all: the sliding window is the matcher's whole cost. Measured
+# at 500 tracks it ran 0.555 us per retrieved posting, and a 5 s query retrieves
+# ~136k postings, so the Python loop alone was ~75 ms of a ~190 ms median and
+# grew linearly with catalog size. Compiled, the same loop costs 0.005 us per
+# posting -- 102x -- which is what takes end-to-end p95 under the Stage 3 bar.
+#
+# Two mechanical substitutions were needed because numba compiles neither of the
+# originals. Both are exact, not approximations:
+#
+#   * the dict counter becomes a fixed-size array indexed by query landmark id.
+#     Exact because ids are `arange(len(query))` repeated, so they are dense in
+#     [0, n_query).
+#   * np.unique(..., return_counts=True) + argmax becomes an explicit run scan
+#     over the already-sorted window. Exact because argmax over ascending unique
+#     values returns the first maximum, which is the smallest value among ties --
+#     the same tie-break the scan makes.
+#
+# Everything else is character-for-character the loop above, including the
+# `distinct > best or (distinct == best and hits > best_hits)` test and its
+# consequence that ties keep the earliest window.
+#
+# cache=False deliberately: numba's on-disk cache writes .nbi/.nbc next to this
+# file, which fails or silently degrades on a read-only install. Compilation is
+# paid once per process via warm_up() instead.
+@njit(cache=False)
+def _best_cluster_compiled(offsets, query_idx, tolerance, n_query):
+    n = offsets.shape[0]
+    if n == 0:
+        return 0, 0, 0, 0, 0
+
+    counts = np.zeros(n_query, np.int32)
+    distinct = 0
+    left = 0
+    best_score = -1
+    best_hits = -1
+    best_lo = 0
+    best_hi = 0
+
+    for right in range(n):
+        q = query_idx[right]
+        counts[q] += 1
+        if counts[q] == 1:
+            distinct += 1
+        while offsets[right] - offsets[left] > tolerance:
+            ql = query_idx[left]
+            counts[ql] -= 1
+            if counts[ql] == 0:
+                distinct -= 1
+            left += 1
+        hits = right - left + 1
+        # Ties go to the earlier (lower-offset) window, so the choice is stable.
+        if distinct > best_score or (distinct == best_score and hits > best_hits):
+            best_score = distinct
+            best_hits = hits
+            best_lo = left
+            best_hi = right
+
+    # Modal offset in the winning window. The window is sorted, so one pass over
+    # its runs finds the most common value, keeping the first (smallest) on a tie.
+    best_val = offsets[best_lo]
+    best_cnt = 0
+    cur_val = offsets[best_lo]
+    cur_cnt = 0
+    for i in range(best_lo, best_hi + 1):
+        if offsets[i] == cur_val:
+            cur_cnt += 1
+        else:
+            if cur_cnt > best_cnt:
+                best_cnt = cur_cnt
+                best_val = cur_val
+            cur_val = offsets[i]
+            cur_cnt = 1
+    if cur_cnt > best_cnt:
+        best_val = cur_val
+
+    return (
+        best_score,
+        best_hits,
+        int(best_val),
+        int(offsets[best_lo]),
+        int(offsets[best_hi]),
+    )
+
+
+@njit(cache=False)
+def _count_distinct(values):
+    """np.unique(values).size, compiled -- called once per candidate track."""
+    if values.shape[0] == 0:
+        return 0
+    ordered = np.sort(values)
+    total = 1
+    for i in range(1, ordered.shape[0]):
+        if ordered[i] != ordered[i - 1]:
+            total += 1
+    return total
+
+
+def warm_up() -> float:
+    """Compile the matcher's JIT kernels. Returns seconds spent.
+
+    Idempotent and safe to call concurrently-ish (numba guards its own
+    compilation). Call it at process start: the first uncompiled `match()` would
+    otherwise pay the whole compile inside a user-facing request, which is a
+    latency outlier no amount of steady-state tuning removes.
+
+    `RecognitionService.__init__` already does this, so anything going through
+    the service is warm before its first query.
+    """
+    started = time.perf_counter()
+    offsets = np.array([0, 1, 1, 5], dtype=np.int64)
+    query_idx = np.array([0, 1, 1, 2], dtype=np.int64)
+    _best_cluster_compiled(offsets, query_idx, 2, 3)
+    _count_distinct(query_idx)
+    return time.perf_counter() - started
+
+
 # -------------------------------------------------------------------- match --
 def match(
     query: FingerprintResult,
     index: FingerprintIndex,
     *,
     config: MatchConfig | None = None,
+    compute_second_best: bool = False,
 ) -> MatchResult:
     """Rank catalog tracks by temporal alignment with `query`.
 
@@ -270,6 +392,18 @@ def match(
     Returns candidates ordered by evidence. An empty list means no query hash
     appeared in the index at all; it does NOT mean "rejected", because Phase 1C
     makes no accept/reject decision.
+
+    `compute_second_best` controls the runner-up cluster search, which is a
+    second pass over every candidate track. It is off by default because nothing
+    in the recognition path reads its output: `second_best_score`,
+    `second_best_offset` and `MatchCandidate.margin` are consumed by no module --
+    decision.py's runner-up is `candidates[1]`, a different track, and
+    `MatchDecision.margin` is a different field. Left on, the pass costs ~2.6 ms
+    per query at 500 tracks for a number no caller looks at. With it off the
+    fields are reported as (0, None), so `margin` equals `score`.
+
+    Turn it on when you actually want the alternative-alignment evidence; the
+    values are identical to what the always-on version produced.
     """
     cfg = config or DEFAULT_MATCH_CONFIG
     cfg.validate()
@@ -331,22 +465,32 @@ def match(
     starts = np.concatenate(([0], boundaries))
     ends = np.concatenate((boundaries, [post_ords.size]))
 
+    n_query = len(query)
+
     candidates: list[MatchCandidate] = []
     for s, e in zip(starts.tolist(), ends.tolist()):
         ordinal = int(post_ords[s])
         offs = deltas[s:e]
         qidx = query_index[s:e]
 
-        score, hits, best_offset, win_lo, win_hi = _best_cluster(offs, qidx, tol)
+        score, hits, best_offset, win_lo, win_hi = _best_cluster_compiled(
+            offs, qidx, tol, n_query
+        )
 
-        # Runner-up cluster, excluding everything within tolerance of the winner
-        # so the "second peak" is a genuine alternative alignment and not the
-        # same peak shifted by one frame.
-        keep = (offs < win_lo - tol) | (offs > win_hi + tol)
-        if keep.any():
-            second_score, _, second_offset, _, _ = _best_cluster(
-                offs[keep], qidx[keep], tol
-            )
+        if compute_second_best:
+            # Runner-up cluster, excluding everything within tolerance of the
+            # winner so the "second peak" is a genuine alternative alignment and
+            # not the same peak shifted by one frame.
+            keep = (offs < win_lo - tol) | (offs > win_hi + tol)
+            if keep.any():
+                second_score, _, second_offset, _, _ = _best_cluster_compiled(
+                    np.ascontiguousarray(offs[keep]),
+                    np.ascontiguousarray(qidx[keep]),
+                    tol,
+                    n_query,
+                )
+            else:
+                second_score, second_offset = 0, None
         else:
             second_score, second_offset = 0, None
 
@@ -358,7 +502,7 @@ def match(
                 best_offset_seconds=best_offset * frame_seconds,
                 best_offset_count=hits,
                 total_hits=int(e - s),
-                matched_query_landmarks=int(np.unique(qidx).size),
+                matched_query_landmarks=_count_distinct(qidx),
                 second_best_offset=second_offset,
                 second_best_score=second_score,
             )
@@ -394,10 +538,11 @@ def match_file(
     *,
     config: MatchConfig | None = None,
     fingerprint_config: FingerprintConfig | None = None,
+    compute_second_best: bool = False,
 ) -> MatchResult:
     """Fingerprint an audio file with the index's own config, then match it."""
     query = fingerprint_file(path, fingerprint_config or index.config)
-    return match(query, index, config=config)
+    return match(query, index, config=config, compute_second_best=compute_second_best)
 
 
 __all__ = [
@@ -408,4 +553,5 @@ __all__ = [
     "MatchTiming",
     "match",
     "match_file",
+    "warm_up",
 ]
