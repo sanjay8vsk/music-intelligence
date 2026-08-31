@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "stage": "2",
+  "title": "Stage 2 scale validation \u2014 500-track catalog end-to-end",
+  "provenance": {
+    "git_commit": "6ce12854adeecb9e75df61bcc01f1d0343451f97",
+    "git_dirty": true,
+    "git_dirty_path_count": 39,
+    "phase1_source_sha256": "991ca192fcd54555798eb82e159f376ba552c3a6912d175d0cef8f530847ac34",
+    "fingerprint_format_version": 1,
+    "index_format_version": 1,
+    "thresholds": {
+      "stage1": 0.026316,
+      "gate": 0.03252,
+      "stage2": 0.028571
+    },
+    "benchmark_command": "python scripts/validate_scale.py",
+    "python": "3.11.1",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "generated_utc": "2026-08-31T12:56:35+00:00"
+  },
+  "corpus": {
+    "manifest_path": "eval/fixtures/scale_corpus_manifest.json",
+    "manifest_content_hash": "35b1045b94fe4457b2243dfe900f2e902f67cb472d915e1ec568e413451e4e06",
+    "tracks": 500,
+    "audio_hours": 27.966,
+    "licence_counts": {
+      "CC-BY": 159,
+      "CC-BY-SA": 242,
+      "CC0-1.0": 99
+    },
+    "distinct_artists": 288,
+    "audio_bytes": 3024338735
+  },
+  "ingestion": {
+    "cold_seconds": 611.82,
+    "index_build_seconds": 3.86,
+    "artifact_save_seconds": 0.73,
+    "cold_cache_hits": 0,
+    "cold_cache_hit_rate": 0.0,
+    "skipped": 0,
+    "tracks_per_second": 0.82,
+    "audio_realtime_factor": 164.6
+  },
+  "index": {
+    "postings": 14574966,
+    "unique_hashes": 1250872,
+    "postings_per_track": 29150.0,
+    "postings_per_audio_second": 144.8,
+    "in_memory_bytes": 174899592,
+    "artifact_bytes": 175138906,
+    "bytes_per_posting": 12.0
+  },
+  "memory": {
+    "peak_python_alloc_mb": 730.7,
+    "baseline_rss_mb": 78.0,
+    "peak_rss_mb": 629.7,
+    "note": "peak RSS covers the whole ingestion, which holds every track's fingerprints in memory at once -- the known limitation this run exists to quantify"
+  },
+  "reproducibility": {
+    "catalog_hash_identical": true,
+    "index_hash_identical": true,
+    "catalog_content_hash": "35b1045b94fe4457b2243dfe900f2e902f67cb472d915e1ec568e413451e4e06",
+    "index_content_hash": "bb4e49f67ba5037102e2a65f985c19164a98f7aadb7582bfce96b8c205330337",
+    "warm_seconds": 9.43,
+    "cold_seconds": 611.82,
+    "speedup": 64.9,
+    "warm_cache_hit_rate": 1.0
+  },
+  "duplicates": {
+    "duplicate_content_groups": 0,
+    "distinct_sha256": 500,
+    "tracks": 500,
+    "overlap_with_frozen_eval_corpus": 0
+  },
+  "isolation": {
+    "own_catalog_decision": "MATCH",
+    "own_catalog_track": "ia_01PXRec043MSDanXNachtaktivAttackVersion_1",
+    "own_catalog_correct": true,
+    "other_catalog_decision": "NO_MATCH",
+    "other_catalog_track": null,
+    "isolated": true
+  },
+  "latency": {
+    "queries": 200,
+    "top1_correct": 200,
+    "top1_rate": 1.0,
+    "end_to_end_ms": {
+      "p50": 36.926,
+      "p95": 76.115,
+      "p99": 99.761
+    },
+    "fingerprint_ms": {
+      "p50": 5.971,
+      "p95": 7.177
+    },
+    "index_lookup_ms": {
+      "p50": 1.451,
+      "p95": 3.514
+    },
+    "offset_histogram_ms": {
+      "p50": 24.225,
+      "p95": 61.842
+    }
+  },
+  "cli": {
+    "catalogs": [
+      "control",
+      "scale500"
+    ],
+    "describe_scale": {
+      "artifact_version": 1,
+      "built_utc": null,
+      "catalog_content_hash": "35b1045b94fe4457b2243dfe900f2e902f67cb472d915e1ec568e413451e4e06",
+      "catalog_id": "scale500",
+      "fingerprint_count": 14574966,
+      "fingerprint_format_version": 1,
+      "index_content_hash": "bb4e49f67ba5037102e2a65f985c19164a98f7aadb7582bfce96b8c205330337",
+      "index_format_version": 1,
+      "track_count": 500
+    }
+  },
+  "roadmap_reference": {
+    "stage2_acceptance": "ingest a 500-track catalog end-to-end; duplicates detected by content hash; cross-tenant isolation proven by test; index artifact reproducible from the manifest",
+    "stage1_latency_criterion": "p95 lookup < 50 ms at 1,000 tracks",
+    "stage1_criterion_note": "measured here at 500 tracks as a scale-readiness signal only. This run does NOT claim the 1,000-track criterion is satisfied."
+  }
+}
