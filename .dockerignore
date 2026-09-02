@@ -1,0 +1,19 @@
+# Keep the build context small and free of anything sensitive or huge.
+.git
+.venv
+data/
+eval/fixtures/
+eval/reports/
+tests/
+scripts/
+notebooks/
+.claude/
+*.md
+!README.md
+__pycache__/
+*.pyc
+*.npz
+*.npy
+.env
+.env.*
+*.rdb

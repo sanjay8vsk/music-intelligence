@@ -1,0 +1,39 @@
+# Local development: the API plus the Redis it requires.
+#
+# The limiter fails closed, so without Redis every /v1/identify returns 503.
+# That is the intended behaviour, not a misconfiguration -- run this file, or
+# set MUSICINTEL_RATE_LIMIT_ENABLED=false if you are deliberately testing
+# without limits.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      redis: {condition: service_healthy}
+    ports: ["8000:8000"]
+    environment:
+      MUSICINTEL_REDIS_URL: redis://redis:6379/0
+      MUSICINTEL_ENVIRONMENT: development
+      MUSICINTEL_LOG_JSON: "false"
+      MUSICINTEL_CATALOG_ROOT: /var/lib/musicintel/catalogs
+      # Development keys only. Production supplies MUSICINTEL_API_KEYS as a
+      # secret; these hashes correspond to keys that exist nowhere else.
+      MUSICINTEL_API_KEYS: >-
+        [{"key_id":"k_dev","tenant":"dev",
+          "key_sha256":"REPLACE_WITH_sha256_OF_YOUR_DEV_KEY",
+          "catalogs":[],"rate_limit_per_minute":120,
+          "audio_seconds_per_day":36000}]
+    volumes:
+      - ../data/catalogs:/var/lib/musicintel/catalogs:ro

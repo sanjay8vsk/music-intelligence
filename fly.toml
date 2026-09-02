@@ -1,0 +1,84 @@
+# Fly.io deployment.
+#
+# Fly rather than Railway, for two reasons specific to this service:
+#   * a catalog index is a file artifact that must be resident in memory and
+#     survive restarts -- Fly volumes give that directly, and the per-catalog
+#     isolation architecture means a volume, not a shared database, is the
+#     natural home for it;
+#   * the memory floor is set by the index, not by traffic. A 500-track catalog
+#     measured 600 MB peak RSS, so the VM must be sized explicitly rather than
+#     autoscaled on request rate.
+#
+# Redis is expected as an external managed instance (Upstash on Fly, or any
+# Redis reachable from the app's private network). It is NOT optional: the
+# limiter fails closed, so an unreachable Redis returns 503 rather than serving
+# unmetered traffic.
+#
+# Secrets, set with `fly secrets set` and never committed:
+#   MUSICINTEL_API_KEYS   inline JSON array of key records (hashes only)
+#   MUSICINTEL_REDIS_URL  redis://... including credentials
+
+app = "music-intelligence"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  MUSICINTEL_ENVIRONMENT = "production"
+  MUSICINTEL_LOG_JSON = "true"
+  MUSICINTEL_LOG_LEVEL = "INFO"
+  MUSICINTEL_CATALOG_ROOT = "/var/lib/musicintel/catalogs"
+  # Artifact storage is OFF here, so catalogs are served from the volume below
+  # exactly as before. No object-storage provider has been selected, and only
+  # `file://` is implemented -- these are documented, not configured:
+  #
+  #   MUSICINTEL_ARTIFACT_STORAGE_URL = "file:///mnt/artifacts"
+  #   MUSICINTEL_ARTIFACT_PINS        = "acme=<index_content_hash>"
+  #   MUSICINTEL_SYNC_CATALOGS        = "acme,demo"
+  #
+  # Turning it on makes instances pull verified artifacts at boot, which is what
+  # allows the volume below to be dropped and the instances to become stateless.
+  # Do not enable it until a provider is chosen and a backend for it exists.
+  MUSICINTEL_METRICS_ENABLED = "true"
+  # Upload and decode caps (S2). Both are enforced independently of each other.
+  MUSICINTEL_MAX_UPLOAD_BYTES = "10485760"
+  MUSICINTEL_MAX_DECODE_SECONDS = "30"
+  MUSICINTEL_DECODE_TIMEOUT_SECONDS = "10"
+  MUSICINTEL_DECODE_CPU_SECONDS = "10"
+  MUSICINTEL_DECODE_MEMORY_LIMIT_BYTES = "536870912"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Never scale to zero: a cold start pays ~3 s of warm-up per worker (numba
+  # JIT plus librosa's lazy imports) and then reloads the catalog index. That
+  # would land on a user's request.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    # The matcher's compiled kernel holds the GIL, so a worker serves one
+    # identify at a time. Soft/hard limits are per machine across 2 workers.
+    soft_limit = 4
+    hard_limit = 8
+
+[[http_service.checks]]
+  grace_period = "45s"     # covers warm-up plus the first catalog load
+  interval = "30s"
+  method = "GET"
+  path = "/v1/health"
+  timeout = "5s"
+
+# Catalog index artifacts. Read-mostly: written by the ingestion job, read by
+# the API.
+[mounts]
+  source = "musicintel_catalogs"
+  destination = "/var/lib/musicintel/catalogs"
+
+[[vm]]
+  size = "performance-2x"
+  memory = "4gb"           # 500-track index measured 600 MB peak RSS per worker
+  cpus = 2
