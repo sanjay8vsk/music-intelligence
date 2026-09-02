@@ -1,0 +1,55 @@
+# Stage 4 BPM/key pilot annotation sheet -- 20 tracks.
+# Protocol: docs/analysis-evaluation.md. Validate with: python scripts/validate_pilot_annotations.py
+# Lines beginning with # are instructions and are ignored by the validator. Leave them in place.
+#
+# HOW TO USE: fill in bpm, key, annotator, annotated_utc and (where useful) notes.
+# Set annotation_status to 'annotated' on each row you complete. Leave untouched rows as 'pending'.
+# Partial completion is fine -- the validator accepts a mix of annotated and pending rows.
+#
+# YOU MUST ACTUALLY LISTEN. Do not paste output from librosa, Essentia, MusicBrainz,
+# Echo Nest, AcousticBrainz or any other automated estimator. Detector output is not
+# ground truth -- these labels exist to judge a detector, so a detector cannot supply them.
+# An honest 'no_stable_tempo' or an honest note is worth more than a confident guess.
+#
+# BPM
+#   - Enter the stable global tempo, e.g. 128 or 143.2
+#   - No meaningful stable pulse (free-time, ambient, drone, rubato, spoken word)?
+#     Enter exactly: no_stable_tempo   ... and say why in notes.
+#   - Half-time / double-time ambiguity: tap what you count, enter that one value,
+#     and note the alternative. Octave tolerance is handled by the metric -- do not pre-correct.
+#   - Do not round to a nicer-looking number. If it is 143.2, write 143.2.
+#   - Use notes for tempo drift or uncertainty.
+#
+# KEY  (one of the 24 classes, sharp-normalised -- Db minor is written C# minor)
+#   - majors: C major, C# major, D major, D# major, E major, F major, F# major, G major, G# major, A major, A# major, B major
+#   - minors: C minor, C# minor, D minor, D# minor, E minor, F minor, F# minor, G minor, G# minor, A minor, A# minor, B minor
+#   - No stable tonal centre (atonal, noise, purely percussive, spoken)?
+#     Enter exactly: no_tonal_centre   ... and say why in notes.
+#   - Do not force a key. Torn between relative major/minor? Enter the tonic the music
+#     resolves to and note the uncertainty -- that confusion is what the metric diagnoses.
+#   - Modal material: enter the closest major/minor and name the mode in notes.
+#
+# annotator      your name or handle, identical on every row you complete
+# annotated_utc  UTC ISO-8601, e.g. 2026-08-31T14:05:00Z
+# notes          optional, but valuable; free text (quote it if it contains a comma)
+track_id,path,title,artist,duration_sec,license,license_url,bpm,key,annotation_status,annotator,annotated_utc,notes
+ia_01PXRec043MSDanXNachtaktivAttackVersion_1,data/eval/corpus500/ia_01PXRec043MSDanXNachtaktivAttackVersion_1.mp3,PXRec043MS Dan X - Nachtaktiv,Dan X,440.1,CC-BY,http://creativecommons.org/licenses/by/3.0/,,,pending,,,
+ia_ARGREC19,data/eval/corpus500/ia_ARGREC19.mp3,Time Will Pass (ARGREC19),Various Artists,153.9,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_Anderstein,data/eval/corpus500/ia_Anderstein.mp3,Anderstein,Deadman & Digi Hartatak,213.3,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_Ark_Can_Saw_Summer,data/eval/corpus500/ia_Ark_Can_Saw_Summer.mp3,Ark Can Saw Summer,Jeff Crew,345.6,CC-BY,http://creativecommons.org/licenses/by/3.0/,,,pending,,,
+ia_BBME001_1,data/eval/corpus500/ia_BBME001_1.mp3,WARFARE EP,ASHES,252.9,CC-BY,http://creativecommons.org/licenses/by/4.0/,,,pending,,,
+ia_BM002_1,data/eval/corpus500/ia_BM002_1.mp3,[BM002] Aggnès Pe - De Greats (MIDI),Aggnès Pe,80.1,CC0-1.0,http://creativecommons.org/publicdomain/zero/1.0/,,,pending,,,
+ia_BarflysDreams-TheLastBarmml001_1,data/eval/corpus500/ia_BarflysDreams-TheLastBarmml001_1.mp3,Barfly's Dreams - The Last Bar (mml001),Barfly's Dreams,303.1,CC-BY,http://creativecommons.org/licenses/by/3.0/,,,pending,,,
+ia_BingSatellites-SoothingImages31-47_1,data/eval/corpus500/ia_BingSatellites-SoothingImages31-47_1.mp3,Soothing Images 31-47,Bing Satellites,303.2,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_Bo012-Monoton-Enomatremixes,data/eval/corpus500/ia_Bo012-Monoton-Enomatremixes.mp3,bo012 - Monoton - Enomat (Remixes),Monoton,295.1,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_Boba_Fettuccini_-_Lime_EP,data/eval/corpus500/ia_Boba_Fettuccini_-_Lime_EP.mp3,Boba Fettuccini - Lime EP (TDC007),Boba Fettuccini,285.1,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_CaptainMissouri888,data/eval/corpus500/ia_CaptainMissouri888.mp3,Captain Missouri 888,Captain Missouri,55.3,CC-BY,http://creativecommons.org/licenses/by/3.0/,,,pending,,,
+ia_CoarseStateOfTheNation2004,data/eval/corpus500/ia_CoarseStateOfTheNation2004.mp3,Coarse State Of the Nation 2004,Charles Gill,253.2,CC-BY,http://creativecommons.org/licenses/by/3.0/,,,pending,,,
+ia_Creeping_Lawler_1,data/eval/corpus500/ia_Creeping_Lawler_1.mp3,Creeping Lawler,Warfare 3.0,296.8,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_Cum.122_Drogadicto_666_1,data/eval/corpus500/ia_Cum.122_Drogadicto_666_1.mp3,CUM 122 - Drogadicto - 666,Clive Echague,255.9,CC0-1.0,http://creativecommons.org/publicdomain/zero/1.0/,,,pending,,,
+ia_DJ_Muziek_-_Animate_1,data/eval/corpus500/ia_DJ_Muziek_-_Animate_1.mp3,DJ Muziek - Animate (TDC011),DJ Muziek,187.7,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_DawnGazer,data/eval/corpus500/ia_DawnGazer.mp3,DawnGazer,lorelei,219.1,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_Dewback_842_1,data/eval/corpus500/ia_Dewback_842_1.mp3,Dewback,Dewback,371.1,CC-BY,http://creativecommons.org/licenses/by/3.0/,,,pending,,,
+ia_DragicaPotocnjak-rodionRomanovic,data/eval/corpus500/ia_DragicaPotocnjak-rodionRomanovic.mp3,Dragica Potocnjak-Rodion Romanovic,Dragica Potocnjak,552.9,CC0-1.0,http://creativecommons.org/publicdomain/zero/1.0/,,,pending,,,
+ia_ELDE12_Prince_Eddie_Controlling,data/eval/corpus500/ia_ELDE12_Prince_Eddie_Controlling.mp3,ELDE12_Prince_Eddie_Controlling,Colinpatrick,136.7,CC-BY-SA,http://creativecommons.org/licenses/by-sa/3.0/,,,pending,,,
+ia_ElectRICHual-Predictable-Mixes,data/eval/corpus500/ia_ElectRICHual-Predictable-Mixes.mp3,RW-Techordings presents [RWT-010] ElectRICHual - Predictable (Mixes),ElectRICHual,288.2,CC0-1.0,http://creativecommons.org/publicdomain/zero/1.0/,,,pending,,,
