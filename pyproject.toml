@@ -19,7 +19,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+# Durable identity, configuration and usage history (Stage 2).
+db = [
+    "psycopg[binary,pool]>=3.2",
+]
+dev = [
+    "pytest>=8",
+    "pgserver>=0.1.4",    # a real PostgreSQL for the persistence tests
+]
 
 [tool.setuptools.packages.find]
 include = ["musicintel*"]

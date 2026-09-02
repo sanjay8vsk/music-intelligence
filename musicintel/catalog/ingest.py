@@ -141,6 +141,8 @@ class IngestReport:
     scanned: int = 0
     ingested: int = 0
     cache_hits: int = 0
+    # Tracks that received sidecar metadata. Zero when no sidecar was supplied.
+    enriched: int = 0
     skipped: list[dict] = dataclasses.field(default_factory=list)
     seconds: float = 0.0
 
@@ -158,6 +160,97 @@ class IngestReport:
                 "seconds": round(self.seconds, 2)}
 
 
+@dataclasses.dataclass(frozen=True)
+class SidecarMetadata:
+    """Optional descriptive metadata supplied alongside the audio.
+
+    Purely descriptive: `title` and `artist` only. Nothing here reaches
+    `track_id`, `sha256`, `duration_sec` or any fingerprint, and neither
+    `Catalog.content_hash()` nor `FingerprintIndex.content_hash()` reads these
+    fields -- so attaching metadata cannot change catalog identity, index
+    identity or recognition. A test asserts exactly that.
+
+    Entries may be keyed by `sha256` or by `track_id`. `sha256` wins when both
+    match, because it identifies the audio itself and survives a change of
+    `id_mode`, whereas a track_id is a naming convention.
+
+    This is metadata the CATALOG OWNER supplies. Metadata obtained from
+    MusicBrainz lives in the `track_metadata` table and is never written here --
+    keeping a customer's own claims separate from a third party's.
+    """
+
+    by_sha256: dict[str, dict] = dataclasses.field(default_factory=dict)
+    by_track_id: dict[str, dict] = dataclasses.field(default_factory=dict)
+
+    def __len__(self) -> int:
+        return len(self.by_sha256) + len(self.by_track_id)
+
+    def lookup(self, track_id: str, sha256: str) -> dict | None:
+        return self.by_sha256.get(sha256) or self.by_track_id.get(track_id)
+
+
+def _clean(value) -> str | None:
+    """Descriptive strings only; empty and the literal 'None' become absent."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.lower() == "none":
+        return None
+    return text
+
+
+def load_sidecar(path: str | Path) -> SidecarMetadata:
+    """Read a metadata sidecar.
+
+    Accepts either a JSON list of records or an object mapping key -> record.
+    Only `title` and `artist` are read; every other field is ignored rather
+    than stored, so a rich source file can be passed without smuggling
+    unvalidated columns into the catalog.
+    """
+    raw = json.loads(Path(path).read_text())
+    if isinstance(raw, dict) and "tracks" in raw:
+        raw = raw["tracks"]
+
+    by_sha: dict[str, dict] = {}
+    by_id: dict[str, dict] = {}
+
+    def record(entry: dict) -> dict:
+        return {k: v for k, v in
+                (("title", _clean(entry.get("title"))),
+                 ("artist", _clean(entry.get("artist")))) if v is not None}
+
+    if isinstance(raw, list):
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            meta = record(entry)
+            if not meta:
+                continue
+            sha = _clean(entry.get("sha256"))
+            tid = _clean(entry.get("track_id"))
+            if sha:
+                by_sha[sha] = meta
+            if tid:
+                by_id[tid] = meta
+    elif isinstance(raw, dict):
+        for key, entry in raw.items():
+            if not isinstance(entry, dict):
+                continue
+            meta = record(entry)
+            if not meta:
+                continue
+            # A 64-character hex key is a content hash; anything else is an id.
+            k = str(key)
+            if len(k) == 64 and all(c in "0123456789abcdef" for c in k.lower()):
+                by_sha[k.lower()] = meta
+            else:
+                by_id[k] = meta
+    else:
+        raise IngestError(f"sidecar {path} must be a JSON list or object")
+
+    return SidecarMetadata(by_sha256=by_sha, by_track_id=by_id)
+
+
 def ingest_paths(
     paths: Iterable[str | Path],
     *,
@@ -166,6 +259,7 @@ def ingest_paths(
     id_mode: str = "stem",
     cache_dir: str | Path | None = None,
     on_duplicate_id: str = "error",
+    metadata: SidecarMetadata | None = None,
     verbose: bool = False,
 ) -> IngestReport:
     """Fingerprint each path and assemble a catalog.
@@ -215,10 +309,17 @@ def ingest_paths(
                 rel = str(p.resolve())
 
             seen[tid] = str(p)
+            # Optional and additive: with no sidecar these stay None and the
+            # catalog is byte-identical to one produced before sidecars existed.
+            meta = metadata.lookup(tid, sha) if metadata is not None else None
             tracks.append(CatalogTrack(
                 track_id=tid, source_path=rel, sha256=sha,
                 duration_sec=round(float(r.duration_sec), 3),
-                bytes=p.stat().st_size, fingerprint_count=len(r)))
+                bytes=p.stat().st_size, fingerprint_count=len(r),
+                title=(meta or {}).get("title"),
+                artist=(meta or {}).get("artist")))
+            if meta:
+                report.enriched += 1
             fps[tid] = r
             report.ingested += 1
         except IngestError:
