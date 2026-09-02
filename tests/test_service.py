@@ -235,3 +235,94 @@ class TestContract:
         assert isinstance(r, Identification)
         assert r.decision is Decision.NO_MATCH
         assert r.track_id is None and r.track is None
+
+
+class TestWarmUp:
+    """Construction pays every first-use cost, so no query pays it.
+
+    Asserted causally, in a subprocess with a cold module table, because that is
+    the only place the property is observable. In-process it is not: any earlier
+    test that fingerprints audio has already loaded librosa's lazy submodules,
+    so the first request looks warm whether or not warm-up ran. An elapsed-time
+    bound is no better -- it fails on a loaded machine and passes on an idle one
+    regardless of whether warm-up worked.
+
+    The regression: librosa's lazy loader imports scipy on the first `stft` and
+    again on the first `resample`. An unwarmed first request spent 1,735 ms in
+    recognition against 13 ms steady state, all of it imports.
+    """
+
+    HEAVY = ("scipy", "librosa", "numba", "llvmlite", "soxr", "soundfile", "sklearn")
+
+    _PROBE = '''
+import json, sys, tempfile
+sys.path.insert(0, {repo!r})
+import numpy as np
+from musicintel.catalog.store import CatalogStore
+from musicintel.recognition.cascade import apply_rate
+from musicintel.recognition.fingerprint import fingerprint
+from musicintel.recognition.matcher import _best_cluster_compiled
+from musicintel.service.recognition import RecognitionService
+
+svc = RecognitionService(CatalogStore(tempfile.mkdtemp()), warm_up={warm})
+
+# Everything the first query needs is imported by now; what matters is whether
+# calling it pulls in anything further.
+settled = set(sys.modules)
+compiled = len(_best_cluster_compiled.signatures)
+
+cfg = svc.fingerprint_config
+sr = cfg.sample_rate
+t = np.arange(sr, dtype=np.float32) / sr
+tone = (0.4 * np.sin(2 * np.pi * 440.0 * t)).astype(np.float32)
+fingerprint(tone, sr, cfg)
+apply_rate(tone, sr, 2.0)
+
+heavy = {heavy!r}
+print(json.dumps({{
+    "lazily_imported": sorted({{m for m in set(sys.modules) - settled
+                               if m.split(".")[0] in heavy}}),
+    "compiled_after_construction": compiled,
+}}))
+'''
+
+    def _probe(self, warm: bool) -> dict:
+        import json as _json
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        repo = str(Path(__file__).resolve().parent.parent)
+        code = self._PROBE.format(repo=repo, warm=warm, heavy=self.HEAVY)
+        p = subprocess.run([sys.executable, "-c", code],
+                           capture_output=True, text=True)
+        assert p.returncode == 0, p.stderr[-2000:]
+        return _json.loads(p.stdout.strip().splitlines()[-1])
+
+    def test_a_warmed_service_leaves_nothing_for_the_first_query_to_import(self):
+        lazy = self._probe(warm=True)["lazily_imported"]
+        # Summarised: the unwarmed case pulls in ~400 modules, and a failure
+        # message that lists them all is unreadable.
+        assert lazy == [], (
+            f"first fingerprint/resample imported {len(lazy)} modules "
+            f"({', '.join(lazy[:5])}...); RecognitionService._warm_up must "
+            f"force these at construction")
+
+    def test_a_warmed_service_has_already_compiled_the_matcher_kernel(self):
+        assert self._probe(warm=True)["compiled_after_construction"] > 0
+
+    def test_the_probe_can_see_the_cost_it_claims_to_prevent(self):
+        """Control arm: without warm-up the same first call does import them.
+
+        Without this the passing test above would be unfalsifiable -- it would
+        look identical if librosa had simply stopped importing anything lazily.
+        Should this ever fail, the warm-up may have become unnecessary rather
+        than broken; check before deleting anything.
+        """
+        assert self._probe(warm=False)["lazily_imported"] != []
+
+    def test_warm_up_is_reported_and_skippable(self):
+        import tempfile
+        store = CatalogStore(tempfile.mkdtemp())
+        assert RecognitionService(store, warm_up=True).warm_up_seconds > 0
+        assert RecognitionService(store, warm_up=False).warm_up_seconds == 0.0

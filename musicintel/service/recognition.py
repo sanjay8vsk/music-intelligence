@@ -39,7 +39,12 @@ import numpy as np
 from musicintel.catalog.models import CatalogTrack
 from musicintel.catalog.store import CatalogStore, LoadedCatalog
 from musicintel.recognition.decision import Decision
-from musicintel.recognition.fingerprint import FingerprintConfig, load_audio
+from musicintel.recognition.cascade import apply_rate
+from musicintel.recognition.fingerprint import (
+    FingerprintConfig,
+    fingerprint,
+    load_audio,
+)
 from musicintel.recognition.gated_cascade import (
     GATED_RATE_GRID,
     PROBE_SECONDS,
@@ -131,11 +136,26 @@ class RecognitionService:
         self.fingerprint_config = fingerprint_config or FingerprintConfig()
         self._cache: dict[str, LoadedCatalog] = {}
         self._cache_enabled = cache_catalogs
-        # The matcher's hot loop is JIT-compiled, and the first call pays for it
-        # (~1.1 s measured). Doing that here means it lands in process start-up
-        # rather than in whichever query happens to arrive first. Anything that
-        # constructs a service is warm before it serves.
-        self.warm_up_seconds = warm_up_matcher() if warm_up else 0.0
+        # Three separate first-use costs land on whichever query arrives first
+        # unless they are paid here: the matcher's JIT (~1.2 s), and librosa's
+        # lazy loader, which imports scipy on the first `stft` and again on the
+        # first `resample`. Measured against a live server, an unwarmed first
+        # request spent 1,735 ms in recognition versus 13 ms steady state --
+        # entirely lazy imports, not work. Anything that constructs a service is
+        # warm before it serves.
+        self.warm_up_seconds = self._warm_up() if warm_up else 0.0
+
+    def _warm_up(self) -> float:
+        """Pay every first-use cost in the recognition path. Returns seconds."""
+        started = time.perf_counter()
+        warm_up_matcher()
+        cfg = self.fingerprint_config
+        sr = cfg.sample_rate
+        t = np.arange(sr, dtype=np.float32) / sr
+        tone = (0.4 * np.sin(2 * np.pi * 440.0 * t)).astype(np.float32)
+        fingerprint(tone, sr, cfg)          # forces librosa.stft
+        apply_rate(tone, sr, 2.0)           # forces librosa.resample
+        return time.perf_counter() - started
 
     # -- catalogs ---------------------------------------------------------
     def catalogs(self) -> list[str]:
