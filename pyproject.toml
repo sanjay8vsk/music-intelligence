@@ -19,12 +19,30 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The HTTP service. Kept out of the core dependency set so the library and the
+# evaluation harness install without a web stack.
+api = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",  # multipart uploads for /v1/identify
+    "redis>=5.0",               # rate limiting and audio-second quotas
+    "structlog>=24.4",
+    "prometheus-client>=0.21",
+    "soxr",              # resampling in the sandboxed decoder, which never imports librosa
+]
+
 # Durable identity, configuration and usage history (Stage 2).
 db = [
     "psycopg[binary,pool]>=3.2",
 ]
 dev = [
     "pytest>=8",
+    "httpx>=0.27",        # fastapi TestClient
+    "fakeredis>=2.25",    # limiter tests without a server
+    "lupa>=2.0",          # fakeredis needs it to execute the limiter's Lua
+    "schemathesis>=3.38", # OpenAPI conformance
     "pgserver>=0.1.4",    # a real PostgreSQL for the persistence tests
 ]
 
