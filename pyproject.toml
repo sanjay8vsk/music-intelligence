@@ -49,5 +49,11 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["musicintel*"]
 
+# The migrations are resolved relative to the installed package
+# (musicintel/db/migrate.py), so they must travel in the wheel. Without this the
+# runner finds an empty directory and reports applying nothing -- silently.
+[tool.setuptools.package-data]
+"musicintel.db" = ["migrations/*.sql"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
