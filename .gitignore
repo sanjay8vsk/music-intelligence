@@ -27,3 +27,5 @@ models/
 # audio files
 data/raw_audio/
 data/features/
+# schemathesis run cache
+.schemathesis/
