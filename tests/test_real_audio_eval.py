@@ -79,6 +79,12 @@ def with_timings(samples, sr):
         out["timings"] = TIMINGS
     return out
 
+ANSWER = None           # what `answering` returns; set by the test
+
+def answering(samples, sr):
+    _log(samples, sr)
+    return ANSWER
+
 def timed(samples, sr):
     """Measures its OWN execution, independently of the harness."""
     started = time.perf_counter()
@@ -837,6 +843,316 @@ class TestTimingTelemetry:
                     items, warmup=0)
         assert r["bpm"]["failed"] == 1
         assert r["timing_ms"]["bpm_ms"]["n"] == 1           # valid telemetry kept
+
+
+# ----------------------------------- post-review regressions (5 findings) --
+class TestStructurallyInvalidInputs:
+    """Finding 1: malformed content and unreadable audio are named refusals."""
+
+    def _refused(self, world, capsys, code, expected, *needles):
+        out = capsys.readouterr().out
+        assert code == expected, out
+        assert f"REFUSED (exit {expected})" in out and "No report written." in out
+        for n in needles:
+            assert n in out, out
+        assert world.no_report_written() and world.det.CALLS == []
+
+    def _write_tracks(self, world, tracks):
+        world.manifest.write_text(json.dumps({"content_hash": "0" * 64,
+                                              "tracks": tracks}))
+
+    def test_a_track_without_track_id_is_refused_not_a_keyerror(self, world, capsys):
+        world.annotate({0: ("120", "C major")})
+        self._write_tracks(world, world.tracks + [{"path": "x.mp3"}])
+        self._refused(world, capsys, world.run(), ebk.EXIT_UNREADABLE_INPUT,
+                      "tracks[20] has no valid track_id", str(world.manifest))
+
+    @pytest.mark.parametrize("entry,needle", [
+        ("a string", "tracks[20] is str"), (7, "tracks[20] is int"),
+        (None, "tracks[20] is NoneType"), ([1], "tracks[20] is list"),
+    ])
+    def test_a_track_entry_that_is_not_an_object(self, world, capsys, entry, needle):
+        world.annotate({0: ("120", "C major")})
+        self._write_tracks(world, world.tracks + [entry])
+        self._refused(world, capsys, world.run(), ebk.EXIT_UNREADABLE_INPUT, needle)
+
+    @pytest.mark.parametrize("tid", [None, 7, "", "   ", ["t00"]])
+    def test_an_invalid_track_id(self, world, capsys, tid):
+        world.annotate({0: ("120", "C major")})
+        self._write_tracks(world, world.tracks + [{"track_id": tid}])
+        self._refused(world, capsys, world.run(), ebk.EXIT_UNREADABLE_INPUT,
+                      "has no valid track_id")
+
+    @pytest.mark.parametrize("field", ["title", "duration_sec", "path", "sha256"])
+    def test_a_pilot_track_missing_a_field_is_refused(self, world, capsys, field):
+        world.annotate({0: ("120", "C major")})
+        tracks = [dict(t) for t in world.tracks]
+        del tracks[0][field]
+        self._write_tracks(world, tracks)
+        self._refused(world, capsys, world.run(), ebk.EXIT_UNREADABLE_INPUT,
+                      "malformed")
+
+    def test_a_sheet_row_with_missing_cells_is_refused(self, world, capsys):
+        world.annotate({0: ("120", "C major")})
+        lines = world.csv.read_text().splitlines()
+        lines[2] = lines[2].split(",")[0]            # first data row: id only
+        world.csv.write_text("\n".join(lines) + "\n")
+        self._refused(world, capsys, world.run(), ebk.EXIT_UNREADABLE_INPUT,
+                      "structurally malformed")
+
+    def test_a_non_numeric_sheet_duration_is_an_ordinary_validation_error(
+            self, world, capsys):
+        world.annotate({0: ("120", "C major")})
+        world.csv.write_text(world.csv.read_text().replace(",1.0,", ",abc,", 1))
+        self._refused(world, capsys, world.run(), ebk.EXIT_INVALID_ANNOTATIONS,
+                      "duration_sec was edited")
+
+    @pytest.mark.parametrize("break_it", ["no_track_id", "non_object", "missing_field"])
+    def test_the_no_detector_path_is_protected_too(self, world, capsys, break_it):
+        tracks = [dict(t) for t in world.tracks]
+        if break_it == "no_track_id":
+            tracks.append({"path": "x"})
+        elif break_it == "non_object":
+            tracks.append("nope")
+        else:
+            del tracks[0]["duration_sec"]
+        self._write_tracks(world, tracks)
+        self._refused(world, capsys, world.run(detector=None),
+                      ebk.EXIT_UNREADABLE_INPUT, "malformed")
+
+    @pytest.mark.skipif(os.name != "posix" or os.geteuid() == 0,
+                        reason="needs POSIX permissions and a non-root user")
+    def test_unreadable_audio_is_an_audio_refusal(self, world, capsys):
+        world.annotate({0: ("120", "C major")})
+        audio = world.audio(world.tid(0))
+        audio.chmod(0)
+        try:
+            self._refused(world, capsys, world.run(), ebk.EXIT_AUDIO_ERROR,
+                          "cannot be read", str(audio))
+        finally:
+            audio.chmod(0o644)
+
+    def test_a_directory_in_place_of_audio_is_an_audio_refusal(self, world, capsys):
+        world.annotate({0: ("120", "C major")})
+        audio = world.audio(world.tid(0))
+        audio.unlink()
+        audio.mkdir()
+        self._refused(world, capsys, world.run(), ebk.EXIT_AUDIO_ERROR, "missing")
+
+
+class TestKeyAndBpmAreJudgedIndependently:
+    """Finding 2: a malformed key answer never costs a correct BPM answer."""
+
+    MALFORMED_KEYS = [
+        np.array(["C major", "A minor"]),          # multi-element: ambiguous
+        np.zeros(24),                               # a key-probability vector
+        np.array(["C major"]),                      # even one element: not coerced
+        ["C major"], ("C major",), {"key": "C major"}, 7, 3.5, True, b"C major",
+    ]
+
+    @pytest.mark.parametrize("bad_key", MALFORMED_KEYS,
+                             ids=lambda v: type(v).__name__ + str(np.size(v)))
+    def test_a_malformed_key_fails_the_key_only(self, world, bad_key):
+        world.det.ANSWER = {"bpm": 120.0, "key": bad_key}
+        world.annotate({0: ("120", "C major"), 1: ("120", "A minor")})
+        assert world.run(detector="answering") == ebk.EXIT_OK
+        r = world.report()["results"]
+        assert r["bpm"]["failed"] == 0 and r["bpm"]["evaluable"] == 2
+        assert r["bpm"]["raw_accuracy"] == 1.0              # BPM untouched
+        assert r["key"]["failed"] == 2 and r["key"]["evaluable"] == 0
+        assert r["key"]["exact_accuracy"] == 0.0
+        assert all("invalid key prediction" in f["error"] for f in r["key"]["failures"])
+
+    @pytest.mark.parametrize("bad_bpm", [np.array([120.0, 60.0]), [120.0], "120",
+                                         {"bpm": 120}, float("nan"), -5, True,
+                                         10 ** 5000],
+                             ids=lambda v: type(v).__name__)
+    def test_a_malformed_bpm_fails_the_bpm_only(self, world, bad_bpm):
+        world.det.ANSWER = {"bpm": bad_bpm, "key": "C major"}
+        world.annotate({0: ("120", "C major")})
+        assert world.run(detector="answering") == ebk.EXIT_OK
+        r = world.report()["results"]
+        assert r["bpm"]["failed"] == 1 and r["bpm"]["raw_accuracy"] == 0.0
+        assert r["key"]["failed"] == 0 and r["key"]["exact_accuracy"] == 1.0
+
+    def test_string_and_key_object_answers_are_still_accepted(self, world):
+        from musicintel.analysis.keys import parse_key
+        for answer in ("C major", np.str_("C major"), "c MAJOR", parse_key("C major")):
+            assert ebk._key_prediction(answer) == ("C major", None), answer
+        assert ebk._key_prediction("Db minor") == ("C# minor", None)   # normalised
+
+    def test_an_answer_whose_comparison_raises_is_isolated(self):
+        class Hostile(str):
+            def __eq__(self, other):
+                raise RuntimeError("no comparing")
+            __hash__ = str.__hash__
+
+        items = [i for i in ebk.synthetic_items() if i["id"] in ("bpm_120", "key_C_major")]
+        r = ebk.run(lambda s, sr: {"bpm": 120.0, "key": Hostile("C major")},
+                    items, warmup=0)
+        assert r["bpm"]["failed"] == 0 and r["bpm"]["raw_accuracy"] == 1.0
+        assert r["key"]["failed"] == 1
+        assert "RuntimeError" in r["key"]["failures"][0]["error"]
+
+
+class TestLabelExclusionCountsCoverEligibleRowsOnly:
+    """Finding 3: manifest-excluded recordings never inflate label counts."""
+
+    def test_counts_against_a_mixed_sheet(self, world):
+        # 0 scorable; 1 no-tempo; 2 no-key; 3 both labels; 4, 5 carry exclusion
+        # labels but their recordings are excluded whole; the rest pending.
+        world.set_manifest(4, annotation_status=EXCLUDED, notes="test: duplicate")
+        world.set_manifest(5, annotation_status=EXCLUDED, notes="test: damaged")
+        world.set_manifest(9, annotation_status=EXCLUDED, notes="test: pending one")
+        world.annotate({0: ("120", "C major"), 1: (NO_TEMPO, "C major"),
+                        2: ("120", NO_KEY), 3: (NO_TEMPO, NO_KEY),
+                        4: (NO_TEMPO, NO_KEY), 5: ("120", NO_KEY)})
+        assert world.run() == ebk.EXIT_OK
+        rep = world.report()
+        d, r = rep["dataset"], rep["results"]
+
+        assert d["annotated"] == 6 and d["pending"] == 14
+        assert d["evaluated_tracks"] == [world.tid(i) for i in (0, 1, 2, 3)]
+        assert d["no_stable_tempo"] == 2 == r["bpm"]["excluded_no_stable_tempo"]
+        assert d["no_tonal_centre"] == 2 == r["key"]["excluded_no_tonal_centre"]
+        assert r["bpm"]["excluded_tracks"] == [world.tid(1), world.tid(3)]
+        assert r["key"]["excluded_tracks"] == [world.tid(2), world.tid(3)]
+        # the whole-recording population is separate and complete
+        assert d["manifest_excluded"] == 3
+        assert [(e["track_id"], e["pilot_status"]) for e in d["manifest_excluded_tracks"]] \
+            == [(world.tid(4), ANNOTATED), (world.tid(5), ANNOTATED),
+                (world.tid(9), PENDING)]
+        withdrawn = {world.tid(4), world.tid(5), world.tid(9)}
+        assert withdrawn.isdisjoint(r["bpm"]["excluded_tracks"] + r["key"]["excluded_tracks"]
+                                    + d["scored_tracks"] + d["exclusion_only_tracks"])
+        assert r["bpm"]["denominator"] == 2 and r["key"]["denominator"] == 2
+
+    def test_without_manifest_exclusions_the_counts_are_unchanged(self, world):
+        world.annotate({0: ("120", "C major"), 1: (NO_TEMPO, NO_KEY)})
+        assert world.run() == ebk.EXIT_OK
+        d = world.report()["dataset"]
+        assert d["no_stable_tempo"] == 1 and d["no_tonal_centre"] == 1
+
+
+class TestTimingNeverAbortsARun:
+    """Finding 4: no telemetry value, however extreme, can end the evaluation."""
+
+    @pytest.mark.parametrize("bad", [10 ** 400, -(10 ** 400), 10 ** 5000],
+                             ids=["1e400", "-1e400", "1e5000"])
+    def test_an_integer_too_large_for_a_float(self, world, bad):
+        rep = _timing_run(world, {"bpm_ms": bad, "key_ms": 30.0})
+        TestTimingTelemetry._scored_normally(rep)
+        t = rep["results"]["timing_ms"]
+        assert t["bpm_ms"] == {"n": 0, "unavailable_calls": 2}     # nothing invented
+        assert t["key_ms"]["n"] == 2 and t["key_ms"]["max"] == 30.0
+        issues = rep["results"]["timing_issues"]
+        assert [i["track_id"] for i in issues] == [world.tid(0), world.tid(1)]
+        assert all("timings.bpm_ms" in i["issue"] and len(i["issue"]) < 200
+                   for i in issues)
+        assert any("malformed in 2 case(s)" in s for s in rep["limitations"])
+
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf"),
+                                     np.float64("nan"), np.inf, "12", None.__class__,
+                                     complex(1, 2), np.array([1.0, 2.0]), {"ms": 1}],
+                             ids=lambda v: repr(v)[:20])
+    def test_non_finite_and_wrong_typed_values(self, world, bad):
+        items = [i for i in ebk.synthetic_items() if i["id"] in ("bpm_120", "key_C_major")]
+        r = ebk.run(lambda s, sr: {"bpm": 120.0, "key": "C major",
+                                   "timings": {"features_ms": bad, "bpm_ms": 2.0}},
+                    items, warmup=0)
+        assert r["bpm"]["raw_accuracy"] == 1.0 and r["key"]["exact_accuracy"] == 1.0
+        assert r["timing_ms"]["features_ms"] == {"n": 0, "unavailable_calls": 2}
+        assert r["timing_ms"]["bpm_ms"]["n"] == 2
+        assert len(r["timing_issues"]) == 2
+
+    def test_a_timings_object_that_raises_on_access(self):
+        class Exploding(dict):
+            def get(self, *a):
+                raise RuntimeError("boom")
+
+        items = [i for i in ebk.synthetic_items() if i["id"] in ("bpm_120", "key_C_major")]
+        r = ebk.run(lambda s, sr: {"bpm": 120.0, "key": "C major",
+                                   "timings": Exploding()}, items, warmup=0)
+        assert r["bpm"]["raw_accuracy"] == 1.0 and r["key"]["exact_accuracy"] == 1.0
+        assert len(r["timing_issues"]) == 2
+        assert all("could not be read" in i["issue"] for i in r["timing_issues"])
+        for name in ("bpm_ms", "key_ms", "features_ms"):
+            assert r["timing_ms"][name] == {"n": 0, "unavailable_calls": 2}
+
+
+class TestSourcesAreReadOnce:
+    """Finding 5: one read of each source; integrity checks intact."""
+
+    def _count_reads(self, world, monkeypatch):
+        reads = {world.csv: 0, world.manifest: 0}
+        real_bytes, real_text = Path.read_bytes, Path.read_text
+
+        def counting_bytes(self):
+            if self in reads:
+                reads[self] += 1
+            return real_bytes(self)
+
+        def counting_text(self, *a, **kw):
+            if self in reads:
+                reads[self] += 1
+            return real_text(self, *a, **kw)
+
+        monkeypatch.setattr(Path, "read_bytes", counting_bytes)
+        monkeypatch.setattr(Path, "read_text", counting_text)
+        return reads
+
+    def test_each_source_is_read_once_to_load_and_once_to_recheck(self, world,
+                                                                  monkeypatch):
+        world.annotate({0: ("120", "C major")})
+        reads = self._count_reads(world, monkeypatch)
+        assert world.run("--dry-run") == ebk.EXIT_OK
+        # exactly: the initial snapshot + the final integrity re-hash
+        assert reads == {world.csv: 2, world.manifest: 2}
+
+    def test_a_refused_run_reads_each_source_exactly_once(self, world, monkeypatch):
+        reads = self._count_reads(world, monkeypatch)
+        assert world.run() == ebk.EXIT_NOTHING_TO_EVALUATE
+        assert reads == {world.csv: 1, world.manifest: 1}
+
+    def test_what_is_evaluated_is_what_was_hashed(self, world, monkeypatch):
+        """Swap the sheet on disk right after the snapshot: the run evaluates
+        the snapshot's labels, then the final comparison refuses it."""
+        world.annotate({0: ("120", "C major")})
+        original = ebk.read_sources
+        seen = {}
+
+        def swap_after_read(*a, **kw):
+            sources = original(*a, **kw)
+            world.annotate({5: ("90", "A minor"), 6: ("90", "A minor")})
+            return sources
+
+        real_run = ebk.run
+
+        def recording_run(detector, items, **kw):
+            seen["ids"] = [i["id"] for i in items]
+            return real_run(detector, items, **kw)
+
+        monkeypatch.setattr(ebk, "read_sources", swap_after_read)
+        monkeypatch.setattr(ebk, "run", recording_run)
+        assert world.run() == ebk.EXIT_SOURCES_CHANGED
+        assert seen["ids"] == [world.tid(0)]          # the snapshot, not the swap
+        assert world.no_report_written()
+
+    def test_the_report_pins_the_snapshot_hashes(self, world):
+        world.annotate({0: ("120", "C major")})
+        expected = {p: hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in (world.csv, world.manifest)}
+        assert world.run() == ebk.EXIT_OK
+        d = world.report()["dataset"]
+        assert d["pilot_csv_sha256"] == expected[world.csv]
+        assert d["manifest_sha256"] == expected[world.manifest]
+
+    def test_the_validator_parsed_and_path_entry_points_agree(self, world):
+        world.annotate({0: ("120", "C major"), 1: ("fast", "Db minor")})
+        by_path = vpa.validate(world.csv, world.manifest)
+        by_data = vpa.validate_parsed(vpa.read_rows(world.csv),
+                                      json.loads(world.manifest.read_text())["tracks"])
+        assert by_path == by_data and by_path[0]
 
 
 # ------------------------------------------------------------ boundary --

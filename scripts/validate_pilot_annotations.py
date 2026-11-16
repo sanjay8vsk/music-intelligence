@@ -52,14 +52,14 @@ BPM_MIN, BPM_MAX = 20.0, 300.0
 UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$")
 
 
-def read_rows(path: Path) -> list[dict[str, str]]:
-    """Read the sheet, skipping the `#` instruction block and blank lines.
+def parse_rows(text: str) -> list[dict[str, str]]:
+    """Parse the sheet's text, skipping the `#` instruction block and blank lines.
 
     Tolerates a spreadsheet round-trip, which may quote the comment lines and
     pad them with trailing commas.
     """
     lines = []
-    for raw in path.read_text().splitlines():
+    for raw in text.splitlines():
         stripped = raw.lstrip().lstrip('"').lstrip()
         if stripped.startswith("#") or not raw.strip().strip(","):
             continue
@@ -67,17 +67,24 @@ def read_rows(path: Path) -> list[dict[str, str]]:
     return list(csv.DictReader(lines))
 
 
-def expected_pilot(manifest: Path) -> list[dict]:
-    tracks = json.loads(manifest.read_text())["tracks"]
+def read_rows(path: Path) -> list[dict[str, str]]:
+    return parse_rows(Path(path).read_text())
+
+
+def pilot_of(tracks: list[dict]) -> list[dict]:
     return sorted(tracks, key=lambda t: t["track_id"])[:PILOT_SIZE]
 
 
-def manifest_status_errors(manifest: Path) -> list[str]:
+def expected_pilot(manifest: Path) -> list[dict]:
+    return pilot_of(json.loads(manifest.read_text())["tracks"])
+
+
+def manifest_status_errors(tracks: list[dict]) -> list[str]:
     """Every manifest track's status must be in MANIFEST_STATUSES, and a
     whole-recording exclusion must say why -- an exclusion is a recorded
     decision, never a silent withdrawal."""
     errors = []
-    for t in json.loads(manifest.read_text())["tracks"]:
+    for t in tracks:
         tid, status = t.get("track_id"), t.get("annotation_status")
         if status not in MANIFEST_STATUSES:
             errors.append(f"manifest track {tid!r}: annotation_status {status!r} "
@@ -118,15 +125,20 @@ def _check_key(value: str, where: str, errors: list[str]) -> None:
 def validate(csv_path: Path = DEFAULT_CSV,
              manifest_path: Path = DEFAULT_MANIFEST) -> tuple[list[str], dict]:
     """Return (errors, summary). An empty error list means the sheet is usable."""
-    errors: list[str] = []
-
     if not csv_path.exists():
         return [f"missing annotation sheet: {csv_path}"], {}
+    return validate_parsed(read_rows(csv_path),
+                           json.loads(Path(manifest_path).read_text())["tracks"])
 
-    rows = read_rows(csv_path)
-    expected = expected_pilot(manifest_path)
+
+def validate_parsed(rows: list[dict[str, str]],
+                    tracks: list[dict]) -> tuple[list[str], dict]:
+    """`validate` on already-parsed sheet rows and manifest tracks, so a caller
+    that has read and hashed the files validates exactly what it read."""
+    errors: list[str] = []
+    expected = pilot_of(tracks)
     by_id = {t["track_id"]: t for t in expected}
-    errors.extend(manifest_status_errors(manifest_path))
+    errors.extend(manifest_status_errors(tracks))
 
     header = list(rows[0]) if rows else []
     if header != COLUMNS:
@@ -164,7 +176,11 @@ def validate(csv_path: Path = DEFAULT_CSV,
                 if row[col].strip() != str(truth[col]):
                     errors.append(f"{where}: {col} was edited; expected "
                                   f"{truth[col]!r}, found {row[col].strip()!r}")
-            if abs(float(row["duration_sec"] or 0) - truth["duration_sec"]) > 0.05:
+            try:
+                duration = float(row["duration_sec"] or 0)
+            except ValueError:
+                duration = None
+            if duration is None or abs(duration - truth["duration_sec"]) > 0.05:
                 errors.append(f"{where}: duration_sec was edited")
 
         status = row["annotation_status"].strip()
@@ -228,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         errors, summary = validate(args.csv, args.manifest)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
         # An input that cannot be read or parsed is reported, not a traceback.
         errors, summary = [f"cannot read the sheet or manifest: "
                            f"{type(exc).__name__}: {exc}"], {}

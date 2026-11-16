@@ -197,13 +197,13 @@ written on any refusal**:
 
 | Step | Refusal | Exit |
 |---|---|---|
-| 0. Both sources exist, are readable, and parse (UTF-8 sheet; JSON manifest with a `tracks` list) | missing, unreadable, or unparseable — the message names the file | 6 |
+| 0. Both sources exist, are readable, and parse (UTF-8 sheet; JSON manifest whose `tracks` is a list of objects, each with a `track_id`). Each is read **once**: the bytes hashed here are the bytes validated and evaluated | missing, unreadable, unparseable or structurally malformed — the message names the file | 6 |
 | 1. Validate the pilot sheet against the manifest (`validate_pilot_annotations.py`), including every manifest status and the reason on each `excluded` track | any validation error | 1 |
 | 2. Keep only `annotated` rows whose recording is not `excluded` in the manifest; `pending` rows and excluded recordings are never decoded, shown to the detector or scored | — | — |
 | 3. Require at least one scorable label (a BPM number or one of the 24 keys) | none: zero annotated rows, or exclusion labels only | 3 |
-| 4. Check each recording to be scored exists and matches the manifest's `sha256` — before the detector runs | missing or altered audio | 4 |
+| 4. Check each recording to be scored exists, is readable and matches the manifest's `sha256` — before the detector runs | missing, unreadable or altered audio | 4 |
 | 5. Decode with `musicintel.recognition.fingerprint.load_audio` (librosa, mono) at the declared rate, `ANALYSIS_SAMPLE_RATE` unless `--sample-rate` overrides it | undecodable audio — an environment fault, **not** a detector failure | 4 |
-| 6. Run the detector. A crash, no answer, a decline (`no_stable_tempo` / `no_tonal_centre` as a *prediction*) or an invalid answer is a **failure**, counted as wrong. Optional `timings` are telemetry: a malformed value is dropped, marked `unavailable_calls` and listed in `results.timing_issues` — never estimated, and never a reason to fail an otherwise valid answer | — | — |
+| 6. Run the detector. A crash, no answer, a decline (`no_stable_tempo` / `no_tonal_centre` as a *prediction*) or an invalid answer is a **failure**, counted as wrong. Optional `timings` are telemetry: a malformed value is dropped, marked `unavailable_calls` and listed in `results.timing_issues` — never estimated, and never a reason to fail an otherwise valid answer. BPM and key answers are judged independently: a malformed key answer (anything but a key-name string) fails the key only, never a correct BPM, and vice versa | — | — |
 | 7. Re-hash the sheet and manifest; they must be byte-identical to what was read | either changed | 5 |
 
 A row whose labels are **both** exclusions is counted under both exclusion
@@ -211,7 +211,8 @@ categories but is neither decoded nor shown to the detector — there is nothing
 to score. The real-audio report records the sheet's and manifest's sha256, the
 annotated / pending / scored / exclusion-only track lists, the annotators, the
 declared sample rate and the decoder, every manifest-excluded recording with its
-reason, and states its own resolution: with *n* scored tracks one error moves
+reason (its labels, if any, are **not** counted under `no_stable_tempo` /
+`no_tonal_centre` — those counts cover only rows eligible for evaluation), and states its own resolution: with *n* scored tracks one error moves
 accuracy by 100/*n* percentage points.
 
 **Known limitation, deliberately deferred.** Audio is verified by sha256 and then

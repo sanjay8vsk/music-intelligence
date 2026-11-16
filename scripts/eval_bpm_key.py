@@ -49,8 +49,10 @@ THE REAL-AUDIO PATH -- every step is a refusal point, none is skipped
      read, exit 5. This harness only ever reads them; it never writes a
      prediction, a label or anything else back into an annotation source.
 
-Before step 1, both sources must exist, be readable, and parse (UTF-8 sheet,
-JSON manifest with a `tracks` list); otherwise exit 6.
+Before step 1, both sources must exist, be readable, and parse (UTF-8 sheet;
+JSON manifest whose `tracks` is a list of objects each with a track_id);
+otherwise exit 6. Each source is read exactly once: the bytes hashed for the
+step-7 comparison are the bytes validated and evaluated.
 
 A manifest track whose status is `excluded` is a whole-recording exclusion: it
 is never decoded or scored, even if its pilot row is annotated, and the report
@@ -72,6 +74,7 @@ In every refusal case no report is written.
 from __future__ import annotations
 
 import argparse
+import csv
 import dataclasses
 import functools
 import hashlib
@@ -96,7 +99,7 @@ from musicintel.analysis.evaluation import (                          # noqa: E4
     Prediction, evaluate_bpm, evaluate_key, format_confusion,
 )
 from musicintel.analysis.fixtures import click_track, synthetic_fixtures  # noqa: E402
-from musicintel.analysis.keys import KeyParseError, normalize_key     # noqa: E402
+from musicintel.analysis.keys import Key, KeyParseError, normalize_key  # noqa: E402
 from musicintel.eval.provenance import git_state, source_fingerprint  # noqa: E402
 # The project's official file decoder. Imported here, in the harness, and never
 # from musicintel/analysis/ -- the analysis package does not depend on
@@ -192,26 +195,62 @@ def _read_source(path: Path, what: str) -> bytes:
         raise _unreadable(what, path, f"cannot be read ({exc.strerror or exc})") from None
 
 
-def source_hashes(csv_path: Path, manifest_path: Path) -> dict[str, str]:
-    """Check both annotation sources are readable and parseable; return their
-    sha256. Raises HarnessRefusal(EXIT_UNREADABLE_INPUT) naming the file."""
+def read_sources(csv_path: Path, manifest_path: Path) -> dict:
+    """Read each annotation source ONCE: the bytes that are hashed here are the
+    bytes that are parsed, validated and evaluated -- nothing downstream reopens
+    either file. Returns {"hashes", "rows", "manifest"}.
+
+    Raises HarnessRefusal(EXIT_UNREADABLE_INPUT), naming the file, when a source
+    is missing, unreadable, unparseable or structurally malformed."""
     csv_bytes = _read_source(csv_path, "pilot annotation sheet")
     man_bytes = _read_source(manifest_path, "annotation manifest")
     try:
-        csv_bytes.decode("utf-8")
+        csv_text = csv_bytes.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise _unreadable("pilot annotation sheet", Path(csv_path),
                           f"is not UTF-8 text ({exc.reason} at byte {exc.start})") from None
     try:
-        data = json.loads(man_bytes.decode("utf-8"))
+        manifest = json.loads(man_bytes.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise _unreadable("annotation manifest", Path(manifest_path),
                           f"is not valid JSON ({exc})") from None
-    if not isinstance(data, dict) or not isinstance(data.get("tracks"), list):
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("tracks"), list):
         raise _unreadable("annotation manifest", Path(manifest_path),
                           "has no 'tracks' list")
-    return {"pilot_csv": hashlib.sha256(csv_bytes).hexdigest(),
-            "manifest": hashlib.sha256(man_bytes).hexdigest()}
+    for n, track in enumerate(manifest["tracks"]):
+        if not isinstance(track, dict):
+            raise _unreadable("annotation manifest", Path(manifest_path),
+                              f"is malformed (tracks[{n}] is "
+                              f"{type(track).__name__}, expected an object)")
+        tid = track.get("track_id")
+        if not isinstance(tid, str) or not tid.strip():
+            raise _unreadable("annotation manifest", Path(manifest_path),
+                              f"is malformed (tracks[{n}] has no valid track_id: "
+                              f"{tid!r})")
+    try:
+        rows = _load_validator().parse_rows(csv_text)
+    except csv.Error as exc:
+        raise _unreadable("pilot annotation sheet", Path(csv_path),
+                          f"is not parseable CSV ({exc})") from None
+    return {"csv_path": Path(csv_path), "manifest_path": Path(manifest_path),
+            "hashes": {"pilot_csv": hashlib.sha256(csv_bytes).hexdigest(),
+                       "manifest": hashlib.sha256(man_bytes).hexdigest()},
+            "rows": rows, "manifest": manifest}
+
+
+def validate_sources(sources: dict) -> tuple[list[str], dict]:
+    """The pilot validator on the already-read sources. Content it rejects comes
+    back as errors (exit 1 for the caller); content so malformed that it cannot
+    even be checked -- a missing field, a wrong type -- is a refusal (exit 6)."""
+    try:
+        return _load_validator().validate_parsed(sources["rows"],
+                                                 sources["manifest"]["tracks"])
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        raise HarnessRefusal(
+            EXIT_UNREADABLE_INPUT,
+            "the pilot sheet or manifest is structurally malformed and cannot "
+            f"be validated ({type(exc).__name__}: {exc}): "
+            f"{sources['csv_path']}, {sources['manifest_path']}") from None
 
 
 def _rehash(path: Path) -> str | None:
@@ -253,6 +292,16 @@ def _scorable(item: dict) -> bool:
             or _is_scorable_key(item.get("key_truth")))
 
 
+def _show(value, limit: int = 60) -> str:
+    """A short, safe description of a detector-supplied value for a message.
+    repr() of hostile input can itself raise (a 5,000-digit int) or be huge."""
+    try:
+        text = repr(value)
+    except Exception:
+        return f"<unprintable {type(value).__name__}>"
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
 def _bpm_prediction(value) -> tuple[float | None, str | None]:
     """A detector's BPM answer, or (None, why it cannot be scored)."""
     if value is None:
@@ -261,10 +310,10 @@ def _bpm_prediction(value) -> tuple[float | None, str | None]:
         return None, f"detector declined ({NO_TEMPO}); counted as wrong"
     if isinstance(value, bool) or not isinstance(value, (int, float, np.integer,
                                                           np.floating)):
-        return None, f"invalid BPM prediction {value!r}"
+        return None, f"invalid BPM prediction {_show(value)}"
     bpm = float(value)
     if not math.isfinite(bpm) or bpm <= 0:
-        return None, f"invalid BPM prediction {value!r}"
+        return None, f"invalid BPM prediction {_show(value)}"
     return bpm, None
 
 
@@ -272,12 +321,28 @@ def _key_prediction(value) -> tuple[str | None, str | None]:
     """A detector's key answer, normalised, or (None, why it cannot be scored)."""
     if value is None:
         return None, "detector returned no key"
+    if isinstance(value, Key):
+        return str(value), None
+    # Only a string names a key. An array, list, number or anything else is
+    # never coerced or compared: it is an invalid KEY answer and nothing more.
+    if not isinstance(value, str):
+        return None, (f"invalid key prediction of type {type(value).__name__} "
+                      "(expected a key name string)")
     if value == NO_KEY:
         return None, f"detector declined ({NO_KEY}); counted as wrong"
     try:
-        return normalize_key(str(value)), None
+        return normalize_key(value), None
     except KeyParseError:
-        return None, f"invalid key prediction {value!r}"
+        return None, f"invalid key prediction {_show(value)}"
+
+
+def _judged(normalise, value) -> tuple[float | str | None, str | None]:
+    """Normalise one answer in isolation: whatever goes wrong with it is that
+    quantity's failure alone and cannot touch the other quantity's answer."""
+    try:
+        return normalise(value)
+    except Exception as exc:
+        return None, f"invalid prediction ({type(exc).__name__}: {exc})"
 
 
 def _component_timings(raw) -> tuple[dict[str, float], list[str], list[str]]:
@@ -297,14 +362,18 @@ def _component_timings(raw) -> tuple[dict[str, float], list[str], list[str]]:
         value = raw.get(name)
         if value is None:
             continue
-        ok = (not isinstance(value, bool)
-              and isinstance(value, (int, float, np.integer, np.floating))
-              and math.isfinite(float(value)) and float(value) >= 0)
-        if ok:
-            valid[name] = float(value)
+        try:
+            number = (float(value)
+                      if not isinstance(value, bool)
+                      and isinstance(value, (int, float, np.integer, np.floating))
+                      else None)
+        except (OverflowError, ValueError, TypeError):   # e.g. int too large
+            number = None
+        if number is not None and math.isfinite(number) and number >= 0:
+            valid[name] = number
         else:
             unavailable.append(name)
-            issues.append(f"timings.{name}={value!r} is not a finite, non-negative "
+            issues.append(f"timings.{name}={_show(value)} is not a finite, non-negative "
                           "number of milliseconds; unavailable for this call")
     return valid, unavailable, issues
 
@@ -368,16 +437,25 @@ def run(detector, items: list[dict], *, warmup: int = 3) -> dict:
                 if not isinstance(result, dict):
                     raise TypeError(f"detector returned {type(result).__name__}, "
                                     "expected a dict")
-                bpm_pred, bpm_err = _bpm_prediction(result.get("bpm"))
-                key_pred, key_err = _key_prediction(result.get("key"))
+                bpm_answer, key_answer = result.get("bpm"), result.get("key")
             except Exception as exc:                  # a crash is a failure
-                bpm_pred = key_pred = None
                 bpm_err = key_err = f"{type(exc).__name__}: {exc}"
                 result = None
+            else:
+                # Judged separately: a malformed key answer is a key failure
+                # and never costs a correct BPM answer, and vice versa.
+                bpm_pred, bpm_err = _judged(_bpm_prediction, bpm_answer)
+                key_pred, key_err = _judged(_key_prediction, key_answer)
             # Telemetry, deliberately outside the scoring path above: however
             # malformed, it cannot change whether an answer counts.
             if isinstance(result, dict):
-                valid, unavailable, issues = _component_timings(result.get("timings"))
+                try:
+                    valid, unavailable, issues = _component_timings(
+                        result.get("timings"))
+                except Exception as exc:
+                    valid, unavailable = {}, list(TIMING_COMPONENTS)
+                    issues = [f"timings could not be read ({type(exc).__name__}); "
+                              "all component timings unavailable for this call"]
                 for name, value in valid.items():
                     timings[name].append(value)
                 for name in unavailable:
@@ -416,6 +494,7 @@ def synthetic_items(sample_rate: int | None = None) -> list[dict]:
 
 
 # -------------------------------------------------------------- real audio --
+@functools.lru_cache(maxsize=1)
 def _load_validator():
     spec = importlib.util.spec_from_file_location("_pilot_validator", VALIDATOR_PATH)
     mod = importlib.util.module_from_spec(spec)
@@ -445,7 +524,11 @@ def decode_audio(path: Path, sample_rate: int) -> tuple[np.ndarray, int]:
 def _verify_audio(path: Path, expected_sha256: str) -> None:
     if not path.is_file():
         raise AudioError(f"audio for an annotated row is missing: {path}")
-    actual = sha256_bytes(path)
+    try:
+        actual = sha256_bytes(path)
+    except OSError as exc:
+        raise AudioError(f"audio for an annotated row cannot be read: {path} "
+                         f"({exc.strerror or type(exc).__name__})") from None
     if actual != expected_sha256:
         raise AudioError(
             f"{path} does not match the manifest (sha256 {actual[:12]}..., "
@@ -453,25 +536,18 @@ def _verify_audio(path: Path, expected_sha256: str) -> None:
             "different audio")
 
 
-def load_real_items(csv_path: Path, manifest_path: Path, *,
+def load_real_items(sources: dict, *,
                     sample_rate: int = ANALYSIS_SAMPLE_RATE,
                     audio_root: Path = REPO_ROOT) -> tuple[list[dict], dict]:
     """Validated, human-annotated rows -> lazily decoded evaluation items.
 
-    Raises HarnessRefusal (exit code attached) rather than returning anything
-    that could be evaluated misleadingly. Reads the sheet and manifest only.
+    `sources` is the result of `read_sources`: the sheet and manifest as read
+    and hashed once. Nothing here reopens either file. Raises HarnessRefusal
+    (exit code attached) rather than returning anything that could be evaluated
+    misleadingly.
     """
-    source_hashes(csv_path, manifest_path)          # readable + parseable, or exit 6
-    validator = _load_validator()
-    try:
-        errors, summary = validator.validate(Path(csv_path), Path(manifest_path))
-        rows = validator.read_rows(Path(csv_path))
-        manifest = json.loads(Path(manifest_path).read_text())
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        # Became unreadable after the pre-check: still a refusal, not a traceback.
-        raise HarnessRefusal(EXIT_UNREADABLE_INPUT,
-                             f"annotation source became unreadable: "
-                             f"{type(exc).__name__}: {exc}") from None
+    rows, manifest = sources["rows"], sources["manifest"]
+    errors, summary = validate_sources(sources)
     if errors:
         raise HarnessRefusal(EXIT_INVALID_ANNOTATIONS,
                              "the pilot annotation sheet failed validation",
@@ -501,6 +577,12 @@ def load_real_items(csv_path: Path, manifest_path: Path, *,
             continue
         bpm_raw, key_raw = r["bpm"].strip(), r["key"].strip()
         track = by_id[tid]          # the validator guarantees membership
+        if not all(isinstance(track.get(k), str) and track.get(k)
+                   for k in ("path", "sha256")):
+            raise HarnessRefusal(
+                EXIT_UNREADABLE_INPUT,
+                f"annotation manifest is malformed (track {tid!r} lacks a "
+                f"path or sha256): {sources['manifest_path']}")
         path = Path(audio_root) / track["path"]
         items.append({
             "id": tid,
@@ -525,8 +607,11 @@ def load_real_items(csv_path: Path, manifest_path: Path, *,
         "evaluated_tracks": [i["id"] for i in items],
         "manifest_excluded": len(manifest_excluded),
         "manifest_excluded_tracks": manifest_excluded,
-        "no_stable_tempo": summary.get("no_stable_tempo", 0),
-        "no_tonal_centre": summary.get("no_tonal_centre", 0),
+        # Counted over the rows actually eligible for evaluation, so they
+        # always equal results.*.excluded_*. A manifest-excluded recording is
+        # a different population and appears only under manifest_excluded.
+        "no_stable_tempo": sum(i["bpm_truth"] == NO_TEMPO for i in items),
+        "no_tonal_centre": sum(i["key_truth"] == NO_KEY for i in items),
         "annotators": summary.get("annotators", []),
         "manifest_content_hash": manifest.get("content_hash"),
         "fixture_set": manifest.get("fixture_set"),
@@ -688,10 +773,10 @@ def main(argv: list[str] | None = None) -> int:
     if detector is None:
         if args.real:
             try:
-                source_hashes(args.pilot_csv, args.manifest)
+                errors, summary = validate_sources(
+                    read_sources(args.pilot_csv, args.manifest))
             except HarnessRefusal as r:
                 return _refuse(r)
-            errors, summary = _load_validator().validate(args.pilot_csv, args.manifest)
             if errors:
                 return _refuse(HarnessRefusal(
                     EXIT_INVALID_ANNOTATIONS,
@@ -714,8 +799,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         kind = REAL_AUDIO
         try:
-            before = source_hashes(args.pilot_csv, args.manifest)
-            items, stats = load_real_items(args.pilot_csv, args.manifest,
+            # The initial snapshot: one read of each source, hashed, and the
+            # very bytes that were hashed are what gets validated and evaluated.
+            sources = read_sources(args.pilot_csv, args.manifest)
+            before = sources["hashes"]
+            items, stats = load_real_items(sources,
                                            sample_rate=args.sample_rate,
                                            audio_root=args.audio_root)
             print(f"  annotated / pending     : {stats['annotated']} / {stats['pending']}")
