@@ -76,7 +76,10 @@ def build_rows(chosen: list[dict]) -> list[dict]:
         # key: a 24-class name such as "C major" / "F# minor", or
         # "no_tonal_centre". Normalised via musicintel.analysis.keys.parse_key.
         "key": None,
-        # pending | annotated | excluded
+        # pending | annotated | excluded -- MANIFEST_STATUSES in
+        # musicintel.analysis.evaluation. `excluded` withdraws the WHOLE
+        # recording (reason required in notes); it is not the same thing as a
+        # no_stable_tempo / no_tonal_centre label.
         "annotation_status": "pending",
         "annotator": None,
         "annotated_utc": None,

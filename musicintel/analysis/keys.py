@@ -98,7 +98,10 @@ class Key:
         return Key((self.pitch_class + 5) % 12, self.is_minor)
 
 
-NO_KEY = "no_key"          # sentinel for atonal / no stable tonal centre
+# Sentinel for atonal / no stable tonal centre. The ONE definition: the
+# annotation protocol, the pilot sheet, the validator and the metrics all use
+# this exact string, and `musicintel.analysis.evaluation` re-exports it.
+NO_KEY = "no_tonal_centre"
 
 
 def parse_key(text: str) -> Key:

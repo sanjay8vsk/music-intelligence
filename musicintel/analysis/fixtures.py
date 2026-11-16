@@ -29,9 +29,10 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from musicintel.analysis.evaluation import ANALYSIS_SAMPLE_RATE
 from musicintel.analysis.keys import Key, parse_key
 
-DEFAULT_SR = 22050          # not the recognition rate; see docs/analysis-evaluation.md
+DEFAULT_SR = ANALYSIS_SAMPLE_RATE   # not the recognition rate; see docs/analysis-evaluation.md
 A4_HZ = 440.0
 A4_MIDI = 69
 

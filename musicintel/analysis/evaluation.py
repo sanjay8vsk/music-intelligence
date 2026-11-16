@@ -7,7 +7,9 @@ Three populations, kept apart:
 * **evaluable** -- ground truth exists and the detector returned an answer.
 * **excluded** -- ground truth says there is no stable tempo / no tonal centre.
   Removed from the denominator entirely and reported by name and count. They are
-  not failures: the correct answer is "there isn't one".
+  not failures: the correct answer is "there isn't one". (This is a per-quantity
+  label exclusion. A manifest-level `excluded` STATUS withdraws a whole
+  recording before it reaches these metrics; see PILOT/MANIFEST_STATUSES.)
 * **failed** -- the detector raised, or returned nothing where an answer was
   expected. Counted in the denominator **as wrong**. A crash is not an excuse.
 
@@ -27,15 +29,42 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from musicintel.analysis.keys import (
-    ALL_KEYS, KEY_LABELS, Key, mirex_score, parse_key, relation,
+    ALL_KEYS, KEY_LABELS, NO_KEY, Key, mirex_score, parse_key, relation,
 )
 
 BPM_TOLERANCE = 0.02              # |pred - truth| / truth
 OCTAVE_FACTORS = (0.5, 1.0, 2.0)
 TRIPLE_FACTORS = (1.0 / 3.0, 3.0)
 
+# The two named exclusion LABELS. `NO_KEY` is defined in keys.py and
+# re-exported here, so there is exactly one spelling of each in the codebase.
 NO_TEMPO = "no_stable_tempo"
-NO_KEY = "no_tonal_centre"
+
+# Annotation status vocabulary. Two schemas, deliberately different:
+#
+# * A pilot-sheet ROW is either awaiting a listener or carries labels:
+#   PILOT_STATUSES. A listener who finds no stable tempo or no tonal centre
+#   ANNOTATES the row with the label above -- a per-quantity judgement about a
+#   recording they did listen to, counted in that quantity's exclusions.
+# * A manifest TRACK may additionally be EXCLUDED: the whole recording is
+#   withdrawn from the benchmark (damaged audio, not music, a duplicate, a
+#   licence problem), with the reason in `notes`. It is never decoded or
+#   scored, and every real-audio report lists it by name.
+#
+# The labels are not a substitute for whole-recording exclusion, nor the
+# reverse. The validator and the evaluation harness both read these constants.
+PENDING = "pending"
+ANNOTATED = "annotated"
+EXCLUDED = "excluded"
+PILOT_STATUSES = frozenset({PENDING, ANNOTATED})
+MANIFEST_STATUSES = frozenset({PENDING, ANNOTATED, EXCLUDED})
+
+# The rate analysis audio is decoded at -- declared, not inherited. It is NOT
+# the recognition rate (11,025 Hz): key and tempo work conventionally assume
+# 22,050 Hz, and whether real-audio key detection needs it is still open (see
+# docs/analysis-evaluation.md). Synthetic fixtures and real audio both default
+# to this rate so their results are produced under the same declared condition.
+ANALYSIS_SAMPLE_RATE = 22050
 
 
 @dataclass(frozen=True)
@@ -191,6 +220,8 @@ def format_confusion(matrix: list[list[int]], *, labels=KEY_LABELS,
 
 
 __all__ = [
-    "BPM_TOLERANCE", "NO_KEY", "NO_TEMPO", "OCTAVE_FACTORS", "Prediction",
+    "ANALYSIS_SAMPLE_RATE", "ANNOTATED", "BPM_TOLERANCE", "EXCLUDED",
+    "MANIFEST_STATUSES", "NO_KEY", "NO_TEMPO", "OCTAVE_FACTORS", "PENDING",
+    "PILOT_STATUSES", "Prediction",
     "evaluate_bpm", "evaluate_key", "format_confusion",
 ]

@@ -28,7 +28,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from musicintel.analysis.evaluation import NO_KEY, NO_TEMPO      # noqa: E402
+from musicintel.analysis.evaluation import (                     # noqa: E402
+    EXCLUDED, MANIFEST_STATUSES, NO_KEY, NO_TEMPO, PENDING, PILOT_STATUSES,
+)
 from musicintel.analysis.keys import KeyParseError, normalize_key  # noqa: E402
 
 DEFAULT_CSV = REPO / "eval/fixtures/bpm_key_pilot_annotation.csv"
@@ -39,7 +41,10 @@ COLUMNS = ["track_id", "path", "title", "artist", "duration_sec", "license",
            "license_url", "bpm", "key", "annotation_status", "annotator",
            "annotated_utc", "notes"]
 METADATA_COLUMNS = ["path", "title", "artist", "license", "license_url"]
-STATUSES = {"pending", "annotated"}
+# The shared vocabulary from musicintel.analysis.evaluation, not a local copy:
+# the evaluation harness selects rows by these same constants. A sheet ROW is
+# pending or annotated; only a manifest TRACK can be excluded (whole recording).
+STATUSES = PILOT_STATUSES
 
 # Generous, but not so generous that a typo slips through. Below 20 or above 300
 # is far likelier to be a mistake than a real global tempo.
@@ -65,6 +70,22 @@ def read_rows(path: Path) -> list[dict[str, str]]:
 def expected_pilot(manifest: Path) -> list[dict]:
     tracks = json.loads(manifest.read_text())["tracks"]
     return sorted(tracks, key=lambda t: t["track_id"])[:PILOT_SIZE]
+
+
+def manifest_status_errors(manifest: Path) -> list[str]:
+    """Every manifest track's status must be in MANIFEST_STATUSES, and a
+    whole-recording exclusion must say why -- an exclusion is a recorded
+    decision, never a silent withdrawal."""
+    errors = []
+    for t in json.loads(manifest.read_text())["tracks"]:
+        tid, status = t.get("track_id"), t.get("annotation_status")
+        if status not in MANIFEST_STATUSES:
+            errors.append(f"manifest track {tid!r}: annotation_status {status!r} "
+                          f"must be one of {sorted(MANIFEST_STATUSES)}")
+        elif status == EXCLUDED and not str(t.get("notes") or "").strip():
+            errors.append(f"manifest track {tid!r}: '{EXCLUDED}' requires the "
+                          "reason in notes")
+    return errors
 
 
 def _check_bpm(value: str, where: str, errors: list[str]) -> None:
@@ -105,6 +126,7 @@ def validate(csv_path: Path = DEFAULT_CSV,
     rows = read_rows(csv_path)
     expected = expected_pilot(manifest_path)
     by_id = {t["track_id"]: t for t in expected}
+    errors.extend(manifest_status_errors(manifest_path))
 
     header = list(rows[0]) if rows else []
     if header != COLUMNS:
@@ -156,7 +178,7 @@ def validate(csv_path: Path = DEFAULT_CSV,
                           f"must be one of {sorted(STATUSES)}")
             continue
 
-        if status == "pending":
+        if status == PENDING:
             pending += 1
             # Empty is the normal pending state. Labels without the status are
             # not -- that is work that would be silently dropped on import.
@@ -189,6 +211,8 @@ def validate(csv_path: Path = DEFAULT_CSV,
     summary = {
         "rows": len(rows), "annotated": annotated, "pending": pending,
         "no_stable_tempo": no_tempo, "no_tonal_centre": no_key,
+        "manifest_excluded": sorted(tid for tid, t in by_id.items()
+                                    if t.get("annotation_status") == EXCLUDED),
         "annotators": annotators, "errors": len(errors),
     }
     return errors, summary
@@ -202,7 +226,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
-    errors, summary = validate(args.csv, args.manifest)
+    try:
+        errors, summary = validate(args.csv, args.manifest)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError) as exc:
+        # An input that cannot be read or parsed is reported, not a traceback.
+        errors, summary = [f"cannot read the sheet or manifest: "
+                           f"{type(exc).__name__}: {exc}"], {}
 
     if not args.quiet:
         print(f"Pilot annotation sheet: {args.csv}")
@@ -212,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  pending         : {summary['pending']}")
             print(f"  no_stable_tempo : {summary['no_stable_tempo']}")
             print(f"  no_tonal_centre : {summary['no_tonal_centre']}")
+            print(f"  manifest-excluded recordings : "
+                  f"{', '.join(summary['manifest_excluded']) or '(none)'}")
             print(f"  annotators      : {', '.join(summary['annotators']) or '(none yet)'}")
         print()
         if errors:

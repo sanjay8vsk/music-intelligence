@@ -55,11 +55,36 @@ deterministically from the CC corpus (CC-BY 20, CC-BY-SA 28, CC0 12). Rows carry
 | `bpm` | a number, or `"no_stable_tempo"` |
 | `key` | a 24-class name, or `"no_tonal_centre"` |
 | `annotation_status` | `pending` / `annotated` / `excluded` |
-| `annotator`, `annotated_utc`, `notes` | provenance for the label |
+| `annotator`, `annotated_utc`, `notes` | provenance for the label; for `excluded`, `notes` holds the reason (required) |
 
 **Every row is currently `pending` with null labels.** The manifest is generated
 unlabelled and must never be auto-filled. The harness refuses to report accuracy
 against unannotated rows.
+
+### Shared vocabulary
+
+Defined once and imported everywhere — the pilot sheet's validator and the
+evaluation harness read the same constants:
+
+| Constant | Value | Defined in |
+|---|---|---|
+| `NO_TEMPO` | `"no_stable_tempo"` | `musicintel/analysis/evaluation.py` |
+| `NO_KEY` | `"no_tonal_centre"` | `musicintel/analysis/keys.py` (re-exported by `evaluation`) |
+| `PILOT_STATUSES` | `pending`, `annotated` | `musicintel/analysis/evaluation.py` |
+| `MANIFEST_STATUSES` | `pending`, `annotated`, `excluded` | `musicintel/analysis/evaluation.py` |
+| `ANALYSIS_SAMPLE_RATE` | `22050` | `musicintel/analysis/evaluation.py` |
+
+Two schemas, two status sets, and two different kinds of exclusion:
+
+| | Where | Means | Effect |
+|---|---|---|---|
+| `no_stable_tempo` / `no_tonal_centre` | a **label** on an `annotated` pilot row | a listener heard the recording and judged that quantity undefined | that quantity only: counted under its exclusion category, outside its denominator; the other quantity is still scored |
+| `excluded` | a manifest track's **status** | the whole recording is withdrawn (damaged audio, not music, duplicate, licence problem) — reason required in `notes` | never decoded or scored, even if its pilot row is annotated; listed by name with its reason in every real-audio report |
+
+Neither substitutes for the other. A pilot-sheet row cannot be `excluded` — a
+sheet row is either awaiting a listener (`pending`) or carries labels
+(`annotated`); withdrawing a recording is a manifest decision. Any other status
+value in either file is a validation error.
 
 ## Annotation protocol
 
@@ -89,6 +114,28 @@ against unannotated rows.
    confusions the metric exists to diagnose, so an honest note is worth more
    than a confident guess.
 5. Modal material: record the closest major/minor and note the mode.
+
+### Before you listen: four recordings are shorter than the sheet says
+
+For four pilot recordings the `duration_sec` in the manifest and the sheet is
+longer than what any player will show. **The recordings are complete.**
+archive.org reported each file's length as *file size ÷ bitrate*, which counts
+the embedded ID3 cover-art images as if they were audio. The project's decoder
+(`load_audio`), ffmpeg and mpg123 all agree on the real playable duration, no
+decoder reports skipped frames, and every audio byte in the file is decoded:
+
+| Recording | Manifest duration | Actual decoded duration | Embedded cover-art tag |
+|---|---:|---:|---:|
+| `ia_Dewback_842_1` | 371.09 s | 337.42 s | 808,105 B at 192 kbit/s = 33.67 s |
+| `ia_BingSatellites-SoothingImages31-47_1` | 303.16 s | 297.25 s | 236,540 B at 320 kbit/s = 5.91 s |
+| `ia_Boba_Fettuccini_-_Lime_EP` | 285.13 s | 280.66 s | 178,894 B at 320 kbit/s = 4.47 s |
+| `ia_DJ_Muziek_-_Animate_1` | 187.70 s | 184.11 s | 57,318 B at 128 kbit/s = 3.58 s |
+
+Listen to the complete playable recording. A player showing e.g. 5:37 rather
+than 6:11 is **not** evidence that the file is truncated, and is not a reason to
+leave the row pending. Do not edit `duration_sec`: it
+must match the manifest, and the validator rejects edits. The evaluation decodes
+exactly the audio you hear.
 
 ### Exclusions are data
 
@@ -131,6 +178,50 @@ A bare key accuracy is never reported alone.
   crash is not an exemption, or a detector could improve its score by failing on
   hard material.
 
+## Running the harness
+
+`scripts/eval_bpm_key.py` runs exactly one kind of evaluation per invocation,
+and each kind writes its own report, labelled with `evaluation_kind`:
+
+| Mode | Ground truth | Report |
+|---|---|---|
+| `--synthetic` | exact by construction — functional validation only | `eval/reports/stage4_bpm_key_synthetic.json` |
+| `--real` | human annotation from the validated pilot sheet | `eval/reports/stage4_bpm_key_real_audio.json` |
+
+```bash
+python scripts/eval_bpm_key.py --real --detector <module>:<function>
+```
+
+The real-audio path, in order. Every step is a refusal point and **no report is
+written on any refusal**:
+
+| Step | Refusal | Exit |
+|---|---|---|
+| 0. Both sources exist, are readable, and parse (UTF-8 sheet; JSON manifest with a `tracks` list) | missing, unreadable, or unparseable — the message names the file | 6 |
+| 1. Validate the pilot sheet against the manifest (`validate_pilot_annotations.py`), including every manifest status and the reason on each `excluded` track | any validation error | 1 |
+| 2. Keep only `annotated` rows whose recording is not `excluded` in the manifest; `pending` rows and excluded recordings are never decoded, shown to the detector or scored | — | — |
+| 3. Require at least one scorable label (a BPM number or one of the 24 keys) | none: zero annotated rows, or exclusion labels only | 3 |
+| 4. Check each recording to be scored exists and matches the manifest's `sha256` — before the detector runs | missing or altered audio | 4 |
+| 5. Decode with `musicintel.recognition.fingerprint.load_audio` (librosa, mono) at the declared rate, `ANALYSIS_SAMPLE_RATE` unless `--sample-rate` overrides it | undecodable audio — an environment fault, **not** a detector failure | 4 |
+| 6. Run the detector. A crash, no answer, a decline (`no_stable_tempo` / `no_tonal_centre` as a *prediction*) or an invalid answer is a **failure**, counted as wrong. Optional `timings` are telemetry: a malformed value is dropped, marked `unavailable_calls` and listed in `results.timing_issues` — never estimated, and never a reason to fail an otherwise valid answer | — | — |
+| 7. Re-hash the sheet and manifest; they must be byte-identical to what was read | either changed | 5 |
+
+A row whose labels are **both** exclusions is counted under both exclusion
+categories but is neither decoded nor shown to the detector — there is nothing
+to score. The real-audio report records the sheet's and manifest's sha256, the
+annotated / pending / scored / exclusion-only track lists, the annotators, the
+declared sample rate and the decoder, every manifest-excluded recording with its
+reason, and states its own resolution: with *n* scored tracks one error moves
+accuracy by 100/*n* percentage points.
+
+**Known limitation, deliberately deferred.** Audio is verified by sha256 and then
+decoded in a separate read, so a file replaced between those two reads would not
+be detected. On a local, single-user checkout this is low-risk; every report
+states it.
+
+The harness only reads the sheet and the manifest. It never writes a label, a
+prediction or anything else into either.
+
 ## Performance
 
 Timing is **feature extraction + BPM + key, excluding audio decode**, measured
@@ -144,19 +235,25 @@ split is visible.
 
 **The <200 ms target is not assumed to be achievable.** It will be measured.
 
-## Sample-rate note, recorded not acted on
+## Sample rate
 
-Recognition decodes at **11,025 Hz** (Nyquist 5,512 Hz). Synthetic fixtures are
-generated at **22,050 Hz**, the rate key-detection work conventionally assumes.
-Whether key detection needs the higher rate on real audio is **not established**;
-if it does, the cost is a second decode, and that trade-off will be measured
-when a detector exists. **The recognition decode rate is not changed
-speculatively.**
+Recognition decodes at **11,025 Hz** (Nyquist 5,512 Hz). Analysis declares its
+own rate, `ANALYSIS_SAMPLE_RATE = 22050` — the rate key-detection work
+conventionally assumes — and both the synthetic fixtures and real-audio decoding
+use it by default, so the two are produced under the same declared condition.
+Every report records the rate it ran at.
+
+Whether key detection actually needs the higher rate on real audio is **not
+established**; if it does, the cost in the product path is a second decode, and
+that trade-off will be measured when a detector exists. **The recognition decode
+rate is not changed.**
 
 ## Architecture boundary
 
 `musicintel/analysis/` does not import `musicintel/recognition/`, and
-recognition does not import analysis — a test asserts the second direction.
+recognition does not import analysis — tests assert both directions. The
+real-audio harness reaches the project decoder from `scripts/`, not from the
+analysis package.
 `/v1/identify` is untouched; `/v1/analyze` remains a separate future endpoint.
 Analysis is not added synchronously to the identify path, whose accepted p95 is
 296.3 ms against a 300 ms bar.
